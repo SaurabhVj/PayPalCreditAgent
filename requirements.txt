@@ -1,0 +1,7 @@
+python-telegram-bot[ext]==21.*
+fastapi==0.115.*
+uvicorn==0.34.*
+aiosqlite==0.20.*
+anthropic==0.42.*
+httpx==0.28.*
+python-dotenv==1.0.*

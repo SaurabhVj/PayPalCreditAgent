@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PayPal Credit Agent — Interactive Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#001f5b;
+  --blue:#0057b8;
+  --sky:#0ea5e9;
+  --gold:#f59e0b;
+  --mint:#10b981;
+  --rose:#f43f5e;
+  --ink:#0a0f1e;
+  --slate:#64748b;
+  --mist:#f1f5f9;
+  --white:#ffffff;
+  --border:rgba(0,31,91,0.10);
+  --shadow:0 2px 16px rgba(0,31,91,0.10);
+  --shadow-lg:0 8px 40px rgba(0,31,91,0.18);
+  --r:14px;--r-sm:9px;
+}
+body{font-family:'Sora',sans-serif;background:#eef2f8;color:var(--ink);min-height:100vh;font-size:14px}
+code,pre,.mono{font-family:'JetBrains Mono',monospace}
+
+/* ── LAYOUT ── */
+html,body{height:100%;overflow:hidden}
+.app{display:grid;grid-template-rows:auto auto 1fr;height:100vh;overflow:hidden}
+.topbar{background:var(--navy);padding:0 32px;display:flex;align-items:center;height:56px;gap:16px}
+.topbar-logo{display:flex;align-items:center;gap:10px;color:white}
+.topbar-logo svg{width:28px;height:28px;fill:white;opacity:.9}
+.topbar-logo span{font-size:16px;font-weight:700;letter-spacing:-.3px}
+.topbar-badge{background:var(--gold);color:var(--ink);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.4px;margin-left:4px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.online-pill{display:flex;align-items:center;gap:6px;background:rgba(16,185,129,.15);color:#6ee7b7;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px}
+.online-dot{width:7px;height:7px;background:#6ee7b7;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.avatar-sm{width:32px;height:32px;border-radius:50%;background:var(--sky);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white}
+
+/* ── TABS ── */
+.tab-bar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab-btn{padding:14px 18px;border:none;background:transparent;font-family:'Sora',sans-serif;font-size:12px;font-weight:500;color:var(--slate);cursor:pointer;white-space:nowrap;position:relative;transition:color .15s}
+.tab-btn:hover{color:var(--blue)}
+.tab-btn.active{color:var(--blue);font-weight:600}
+.tab-btn.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2.5px;background:var(--blue);border-radius:2px 2px 0 0}
+.tab-icon{margin-right:5px;font-size:13px}
+
+/* Sub-tabs */
+.sub-tab-bar{background:#f8fafc;border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;flex-shrink:0}
+.sub-tab-btn{padding:10px 16px;border:none;background:transparent;font-family:'Sora',sans-serif;font-size:11px;font-weight:500;color:var(--slate);cursor:pointer;white-space:nowrap;position:relative;transition:all .15s;border-bottom:2px solid transparent}
+.sub-tab-btn:hover{color:var(--blue);background:rgba(0,87,184,.04)}
+.sub-tab-btn.active{color:var(--blue);font-weight:600;border-bottom-color:var(--blue);background:rgba(0,87,184,.06)}
+
+/* ── PANELS ── */
+.panels{padding:0;overflow:hidden;height:100%;display:flex;flex-direction:column}
+.panel{display:none;animation:fadeUp .2s ease;height:100%;overflow:hidden}
+.panel.active{display:flex;gap:0;align-items:stretch;height:100%;overflow:hidden}
+.panel.active:has(.sub-tab-bar){flex-direction:column}
+.sub-panel{display:none;flex:1;overflow:hidden}
+.sub-panel.active{display:flex;gap:0;align-items:stretch;overflow:hidden}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── TWO COLUMN ── */
+.col-phone{width:360px;flex-shrink:0;padding:20px 16px 20px 24px;display:flex;flex-direction:column;align-items:center;overflow:hidden;height:100%}
+.col-info{flex:1;min-width:0;overflow-y:auto;padding:20px 24px 20px 8px;scrollbar-width:thin;scrollbar-color:rgba(0,31,91,.15) transparent;height:100%}
+.col-info::-webkit-scrollbar{width:4px}
+.col-info::-webkit-scrollbar-thumb{background:rgba(0,31,91,.15);border-radius:2px}
+
+/* ── PHONE ── */
+.phone-shell{
+  background:#111827;
+  border-radius:36px;
+  padding:12px;
+  box-shadow:0 32px 80px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.06);
+  position:relative;
+  width:316px;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.phone-island{width:80px;height:8px;background:#1f2937;border-radius:4px;margin:0 auto 10px;flex-shrink:0}
+.phone-screen{background:#f8fafc;border-radius:26px;overflow:hidden;flex:1;display:flex;flex-direction:column;min-height:0}
+
+/* messenger chrome */
+.messenger-bar{
+  background:var(--white);
+  border-bottom:1px solid #e5e7eb;
+  padding:10px 14px;
+  display:flex;align-items:center;gap:10px;
+}
+.m-back{color:#9ca3af;font-size:18px;cursor:pointer}
+.m-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;background:var(--navy);flex-shrink:0}
+.m-info{flex:1}
+.m-name{font-size:13px;font-weight:600;color:#111}
+.m-status{font-size:11px;color:var(--mint)}
+
+/* chat feed */
+.chat-feed{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;scrollbar-width:none}
+.chat-feed::-webkit-scrollbar{display:none}
+
+.msg-row{display:flex;flex-direction:column;gap:3px}
+.msg-row.user{align-items:flex-end}
+.msg-row.agent{align-items:flex-start}
+
+.bubble{max-width:78%;padding:9px 13px;border-radius:16px;font-size:12.5px;line-height:1.5}
+.bubble.user{background:var(--blue);color:white;border-bottom-right-radius:4px}
+.bubble.agent{background:white;color:#1e293b;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.msg-time{font-size:10px;color:#9ca3af;padding:0 4px}
+
+.agent-tag{font-size:9px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;padding-left:2px}
+
+/* special chat cards */
+.chat-card{background:white;border-radius:14px;border:1px solid #e5e7eb;overflow:hidden;max-width:88%;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.chat-card-header{padding:10px 13px;color:white;display:flex;align-items:center;gap:8px}
+.chat-card-header.blue{background:linear-gradient(135deg,var(--navy),var(--blue))}
+.chat-card-header.teal{background:linear-gradient(135deg,#0f766e,#0ea5e9)}
+.chat-card-header.gold{background:linear-gradient(135deg,#92400e,var(--gold))}
+.chat-card-header.mint{background:linear-gradient(135deg,#065f46,var(--mint))}
+.chat-card-header.rose{background:linear-gradient(135deg,#9f1239,var(--rose))}
+.ch-title{font-size:12px;font-weight:700}
+.ch-sub{font-size:10px;opacity:.75}
+.chat-card-body{padding:10px 13px}
+.cc-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:1px solid #f1f5f9}
+.cc-row:last-child{border:none}
+.cc-val{font-weight:600;color:var(--blue)}
+.cc-val.mint{color:var(--mint)}
+.cc-val.gold{color:var(--gold)}
+.cc-val.rose{color:var(--rose)}
+.chat-card-actions{display:flex;gap:6px;padding:8px 13px 11px}
+.ca-btn{flex:1;padding:7px;border-radius:8px;border:none;font-family:'Sora',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:opacity .12s}
+.ca-btn.primary{background:var(--blue);color:white}
+.ca-btn.secondary{background:#f1f5f9;color:var(--ink)}
+.ca-btn:hover{opacity:.85}
+
+/* chips */
+.chip-row{display:flex;flex-wrap:wrap;gap:5px;max-width:90%;align-self:flex-start}
+.chip{padding:5px 11px;border-radius:20px;border:1px solid var(--blue);font-size:11px;font-weight:500;color:var(--blue);background:white;cursor:pointer;transition:all .12s;white-space:nowrap}
+.chip:hover,.chip.picked{background:var(--blue);color:white}
+
+/* auth card */
+.auth-card{background:linear-gradient(135deg,var(--navy),var(--blue));border-radius:14px;padding:12px 14px;max-width:88%;color:white}
+.auth-title{font-size:12px;font-weight:700;margin-bottom:3px}
+.auth-sub{font-size:10px;opacity:.75;margin-bottom:8px}
+.auth-btn{background:var(--gold);color:var(--ink);border-radius:8px;padding:6px;text-align:center;font-size:11px;font-weight:700;cursor:pointer}
+
+/* approved card */
+.approved-card{background:linear-gradient(135deg,#064e3b,var(--mint));border-radius:14px;padding:16px;max-width:90%;color:white;text-align:center}
+.ap-emoji{font-size:28px;margin-bottom:6px}
+.ap-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.ap-sub{font-size:11px;opacity:.8;margin-bottom:12px}
+.ap-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left}
+.ap-cell{background:rgba(255,255,255,.15);border-radius:8px;padding:7px 10px}
+.ap-label{font-size:9px;opacity:.7;margin-bottom:2px}
+.ap-val{font-size:13px;font-weight:700}
+
+/* typing */
+.typing-bubble{background:white;border-radius:16px;border-bottom-left-radius:4px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;gap:4px;align-items:center;width:48px}
+.typing-bubble span{width:6px;height:6px;background:#d1d5db;border-radius:50%;animation:tbounce 1.2s infinite}
+.typing-bubble span:nth-child(2){animation-delay:.2s}
+.typing-bubble span:nth-child(3){animation-delay:.4s}
+@keyframes tbounce{0%,60%,100%{transform:translateY(0);background:#d1d5db}30%{transform:translateY(-4px);background:var(--blue)}}
+
+/* chat input bar */
+.chat-input-bar{background:white;border-top:1px solid #e5e7eb;padding:8px 12px;display:flex;gap:8px;align-items:center}
+.chat-input{flex:1;border:1px solid #e5e7eb;border-radius:20px;padding:7px 14px;font-family:'Sora',sans-serif;font-size:12px;color:var(--ink);outline:none;background:#f8fafc}
+.chat-send{width:32px;height:32px;border-radius:50%;background:var(--blue);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+
+/* ── RIGHT PANEL ── */
+.card{background:white;border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.card+.card{margin-top:16px}
+.card-h{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.card-h h3{font-size:14px;font-weight:600;color:var(--ink);flex:1}
+.card-h .badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px}
+.badge-blue{background:rgba(0,87,184,.1);color:var(--blue)}
+.badge-mint{background:rgba(16,185,129,.1);color:var(--mint)}
+.badge-gold{background:rgba(245,158,11,.1);color:#92400e}
+.badge-rose{background:rgba(244,63,94,.1);color:var(--rose)}
+.card-b{padding:16px 20px}
+
+/* flow steps */
+.flow-steps{display:flex;flex-direction:column;gap:8px}
+.fstep{display:flex;gap:12px;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:#fafbff;transition:all .15s;cursor:default}
+.fstep.active{background:#eff6ff;border-color:rgba(0,87,184,.25)}
+.fstep.done{background:#f0fdf9;border-color:rgba(16,185,129,.25)}
+.fstep.pending{opacity:.5}
+.fnum{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.fstep .fnum{background:#e2e8f0;color:#64748b}
+.fstep.active .fnum{background:var(--blue);color:white}
+.fstep.done .fnum{background:var(--mint);color:white}
+.fstep-body h4{font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.fstep-body p{font-size:11.5px;color:var(--slate);line-height:1.4}
+.fstep-tag{margin-left:auto;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;flex-shrink:0;align-self:flex-start;margin-top:3px}
+.tag-active{background:rgba(14,165,233,.12);color:#0284c7}
+.tag-done{background:rgba(16,185,129,.12);color:#059669}
+.tag-wait{background:#f1f5f9;color:#94a3b8}
+
+/* metrics row */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.metric{background:white;border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.metric-l{font-size:11px;color:var(--slate);margin-bottom:4px;font-weight:500}
+.metric-v{font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-1px}
+.metric-d{font-size:11px;margin-top:3px;font-weight:500}
+.up{color:var(--mint)}.down{color:var(--rose)}
+
+/* play controls */
+.play-bar{display:flex;gap:8px;align-items:center;margin-top:14px}
+.pbtn{padding:7px 18px;border-radius:20px;border:1px solid var(--border);background:white;font-family:'Sora',sans-serif;font-size:12px;font-weight:600;color:var(--blue);cursor:pointer;transition:all .12s}
+.pbtn:hover{background:var(--mist)}
+.pbtn.primary{background:var(--blue);color:white;border-color:var(--blue)}
+.pbtn:disabled{opacity:.35;cursor:default}
+.step-counter{font-size:12px;color:var(--slate);margin-left:auto}
+
+/* spend bars */
+.sbar-wrap{display:flex;flex-direction:column;gap:10px}
+.sbar-row{display:flex;align-items:center;gap:10px}
+.sbar-label{font-size:12px;font-weight:500;min-width:100px}
+.sbar-track{flex:1;height:7px;background:#e2e8f0;border-radius:4px;overflow:hidden}
+.sbar-fill{height:100%;border-radius:4px;background:var(--blue);transition:width .4s ease}
+.sbar-val{font-size:12px;font-weight:700;color:var(--blue);min-width:48px;text-align:right}
+
+/* product mini cards */
+.prod-mini{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.prod-mini-top{padding:10px 14px;color:white;font-size:12px;font-weight:700}
+.prod-mini-top.n{background:linear-gradient(135deg,var(--navy),var(--blue))}
+.prod-mini-top.t{background:linear-gradient(135deg,#0f766e,#0ea5e9)}
+.prod-mini-top.d{background:linear-gradient(135deg,#1e1b4b,#4338ca)}
+.prod-mini-body{padding:10px 14px;background:white}
+.prod-mini-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0}
+.prod-mini-row .v{font-weight:600;color:var(--navy)}
+.rec-chip{display:inline-block;background:var(--gold);color:var(--ink);font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px}
+
+/* sim sliders */
+.sim-group{margin-bottom:14px}
+.sim-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.sim-row span{font-size:12px;font-weight:500}
+.sim-row .sv{font-size:13px;font-weight:700;color:var(--blue)}
+input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}
+.sim-result-box{background:linear-gradient(135deg,var(--navy),var(--blue));border-radius:14px;padding:18px;text-align:center;color:white;margin-bottom:16px}
+.srb-label{font-size:11px;opacity:.7;margin-bottom:4px}
+.srb-val{font-size:36px;font-weight:700;letter-spacing:-2px}
+.srb-sub{font-size:11px;opacity:.7;margin-top:4px}
+
+/* credit path */
+.cpath{position:relative;padding-left:28px}
+.cpath::before{content:'';position:absolute;left:10px;top:20px;bottom:20px;width:2px;background:linear-gradient(to bottom,var(--mint),var(--sky),var(--blue))}
+.cpath-step{position:relative;margin-bottom:14px}
+.cpath-dot{position:absolute;left:-23px;top:12px;width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 0 0 2px currentColor}
+.cpath-dot.done{background:var(--mint);color:var(--mint)}
+.cpath-dot.now{background:var(--sky);color:var(--sky)}
+.cpath-dot.fut{background:#cbd5e1;color:#cbd5e1}
+.cpath-card{background:white;border-radius:11px;padding:12px 14px;box-shadow:var(--shadow)}
+.cpath-card h4{font-size:12.5px;font-weight:600;margin-bottom:2px}
+.cpath-card p{font-size:11.5px;color:var(--slate);line-height:1.4}
+.cp-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:5px}
+.cp-done{background:rgba(16,185,129,.1);color:#059669}
+.cp-now{background:rgba(14,165,233,.1);color:#0284c7}
+.cp-fut{background:#f1f5f9;color:#94a3b8}
+
+/* session platforms */
+.platform-list{display:flex;flex-direction:column;gap:10px}
+.platform-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fafbff;border-radius:11px;border:1px solid var(--border)}
+.platform-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.platform-item h4{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.platform-item p{font-size:11px;color:var(--slate)}
+.platform-status{margin-left:auto;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;flex-shrink:0}
+.ps-active{background:rgba(16,185,129,.1);color:var(--mint)}
+.ps-paused{background:rgba(245,158,11,.1);color:var(--gold)}
+.ps-ready{background:rgba(0,87,184,.1);color:var(--blue)}
+
+/* dispute timeline */
+.dtimeline{display:flex;flex-direction:column;gap:0}
+.dte{display:flex;gap:12px;position:relative;padding-bottom:16px}
+.dte:last-child{padding-bottom:0}
+.dte::before{content:'';position:absolute;left:10px;top:20px;bottom:0;width:1.5px;background:#e2e8f0}
+.dte:last-child::before{display:none}
+.dte-dot{width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;z-index:1}
+.dte-dot.d{background:var(--rose);color:white}
+.dte-dot.p{background:var(--gold);color:white}
+.dte-dot.ok{background:var(--mint);color:white}
+.dte-dot.w{background:var(--blue);color:white}
+.dte-body h4{font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.dte-body p{font-size:11.5px;color:var(--slate)}
+.dte-time{font-size:10px;color:#9ca3af;margin-top:2px}
+
+/* life event trigger */
+.le-trigger{background:linear-gradient(135deg,#4c1d95,#7c3aed);border-radius:13px;padding:14px 16px;color:white;margin-bottom:14px}
+.le-t-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.7;margin-bottom:3px}
+.le-t-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.le-t-desc{font-size:11px;opacity:.8;line-height:1.4}
+.le-signals{display:flex;flex-direction:column;gap:8px}
+.le-sig{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f8fafc;border-radius:9px;border:1px solid var(--border)}
+.le-sig-icon{font-size:16px;flex-shrink:0}
+.le-sig-body{flex:1}
+.le-sig-body h4{font-size:12px;font-weight:600;margin-bottom:1px}
+.le-sig-body p{font-size:11px;color:var(--slate)}
+.le-sig-conf{font-size:11px;font-weight:700;color:var(--blue)}
+
+/* proactive message preview */
+.notif-preview{border-radius:13px;padding:14px;border:1px solid var(--border);background:white;box-shadow:var(--shadow);margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+.notif-app-icon{width:36px;height:36px;border-radius:9px;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.notif-content .notif-app{font-size:10px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.4px}
+.notif-content .notif-title{font-size:13px;font-weight:600;color:var(--ink);margin:2px 0}
+.notif-content .notif-body{font-size:12px;color:var(--slate);line-height:1.4}
+.notif-time{font-size:10px;color:#9ca3af;margin-left:auto;flex-shrink:0}
+
+/* portfolio cards */
+.port-card{border-radius:13px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:12px}
+.port-top{padding:16px 18px;color:white;display:flex;align-items:center;gap:12px}
+.port-top.b{background:linear-gradient(135deg,var(--navy),var(--blue))}
+.port-top.t{background:linear-gradient(135deg,#0f766e,#0ea5e9)}
+.port-chip{width:40px;height:26px;background:rgba(255,255,255,.2);border-radius:5px;flex-shrink:0}
+.port-name{font-size:14px;font-weight:700}
+.port-num{font-size:10px;opacity:.7}
+.port-bal{margin-left:auto;text-align:right}
+.port-bal-v{font-size:16px;font-weight:700}
+.port-bal-l{font-size:9px;opacity:.7}
+.port-body{background:white;padding:13px 18px}
+.port-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #f1f5f9}
+.port-row:last-child{border:none}
+.port-key{color:var(--slate)}
+.port-val{font-weight:600}
+.util-bar{height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin:6px 0 2px}
+.util-fill{height:100%;border-radius:3px}
+.util-good{background:var(--mint)}.util-mid{background:var(--gold)}.util-high{background:var(--rose)}
+.port-nudge{background:#eff6ff;border-radius:9px;padding:9px 12px;font-size:11.5px;color:var(--blue);font-weight:500;margin-top:8px;line-height:1.4}
+
+/* info note */
+.info-note{background:#f0f9ff;border-left:3px solid var(--sky);border-radius:0 9px 9px 0;padding:10px 13px;font-size:12px;color:#0369a1;line-height:1.5;margin-top:10px}
+
+a{color:var(--blue)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg viewBox="0 0 24 24"><path d="M7.076 21.337H2.47a.641.641 0 01-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 00-.607-.541c-.013.076-.026.175-.041.26-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 00-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 00.554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 01.923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.477z"/></svg>
+    <span>PayPal Credit Agent</span>
+    <span class="topbar-badge">PROTOTYPE</span>
+  </div>
+  <div class="topbar-right">
+    <div class="online-pill"><div class="online-dot"></div>Agent Online</div>
+    <div class="avatar-sm">AS</div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar" id="tabBar">
+  <button class="tab-btn active" onclick="showTab('live')"><span class="tab-icon">💬</span>Live chat - user initiated</button>
+  <button class="tab-btn" onclick="showTab('proactive')"><span class="tab-icon">📡</span>Proactive outreach - PayPal initiated</button>
+  <button class="tab-btn" onclick="showTab('optimizer')"><span class="tab-icon">🗂</span>Credit optimizer agent</button>
+  <button class="tab-btn" onclick="showTab('builder')"><span class="tab-icon">📈</span>Credit Builder</button>
+  <button class="tab-btn" onclick="showTab('session')"><span class="tab-icon">🔄</span>Session Continuity</button>
+  <button class="tab-btn" onclick="showTab('collections')"><span class="tab-icon">⚖️</span>Collections</button>
+</div>
+
+<!-- PANELS -->
+<div class="panels">
+
+<!-- ═══════════════════════════════════════ TAB 1: LIVE CHAT ═══ -->
+<div id="panel-live" class="panel active">
+  <div class="col-phone">
+    <div class="phone-shell">
+      <div class="phone-island"></div>
+      <div class="phone-screen">
+        <div class="messenger-bar">
+          <span class="m-back">‹</span>
+          <div class="m-avatar">P</div>
+          <div class="m-info"><div class="m-name">@PayPalCreditAgent</div><div class="m-status">● Active now</div></div>
+        </div>
+        <div class="chat-feed" id="feed-live"></div>
+        <div class="chat-input-bar">
+          <input class="chat-input" id="inp-live" placeholder="Message…" onkeydown="if(event.key==='Enter')sendLive()"/>
+          <button class="chat-send" onclick="sendLive()">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-info">
+    <div class="card">
+      <div class="card-h"><h3>🔬 Agent Signal Trace</h3><span class="badge badge-blue" id="live-step-label">Step 1 / 9</span></div>
+      <div class="card-b">
+        <div class="flow-steps" id="live-signals">
+          <div class="fstep active" id="ls-intent"><div class="fnum">1</div><div class="fstep-body"><h4>Intent Parser</h4><p>NLU detecting credit need from user query</p></div><span class="fstep-tag tag-active">Running</span></div>
+          <div class="fstep pending" id="ls-context"><div class="fnum">2</div><div class="fstep-body"><h4>Context Builder</h4><p>Auth + spend profile + risk signals</p></div><span class="fstep-tag tag-wait">Pending</span></div>
+          <div class="fstep pending" id="ls-clarify"><div class="fnum">3</div><div class="fstep-body"><h4>Clarification Engine</h4><p>Asks targeted follow-up (max 2 turns)</p></div><span class="fstep-tag tag-wait">Pending</span></div>
+          <div class="fstep pending" id="ls-reco"><div class="fnum">4</div><div class="fstep-body"><h4>Recommendation Model</h4><p>Homegrown ML — top 3 ranked products</p></div><span class="fstep-tag tag-wait">Pending</span></div>
+          <div class="fstep pending" id="ls-prefill"><div class="fnum">5</div><div class="fstep-body"><h4>Pre-fill Engine</h4><p>Identity, address, income from PayPal data</p></div><span class="fstep-tag tag-wait">Pending</span></div>
+          <div class="fstep pending" id="ls-decision"><div class="fnum">6</div><div class="fstep-body"><h4>Decision API</h4><p>Instant credit decision + offer terms</p></div><span class="fstep-tag tag-wait">Pending</span></div>
+        </div>
+        <div class="play-bar">
+          <button class="pbtn" id="lv-prev" onclick="stepLive(-1)" disabled>← Prev</button>
+          <button class="pbtn primary" id="lv-next" onclick="stepLive(1)">Next Step →</button>
+          <button class="pbtn" onclick="resetLive()">↺</button>
+          <span class="step-counter" id="lv-counter">Step 1 / 9</span>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-h"><h3>💳 Products Matched to Arun</h3><span class="badge badge-mint">Pre-qualified</span></div>
+      <div class="card-b" id="live-products" style="display:none">
+        <div class="prod-mini">
+          <div class="prod-mini-top n">PayPal Miles+ <span class="rec-chip">BEST MATCH</span></div>
+          <div class="prod-mini-body">
+            <div class="prod-mini-row"><span>Sign-up bonus</span><span class="v">75,000 miles</span></div>
+            <div class="prod-mini-row"><span>Lounge access</span><span class="v">Priority Pass ✓</span></div>
+            <div class="prod-mini-row"><span>FX fees</span><span class="v cc-val mint">None ✓</span></div>
+            <div class="prod-mini-row"><span>Est. rewards/yr</span><span class="v">$412</span></div>
+          </div>
+        </div>
+        <div class="prod-mini">
+          <div class="prod-mini-top t">PayPal Everyday Cash</div>
+          <div class="prod-mini-body">
+            <div class="prod-mini-row"><span>Cash back</span><span class="v">2% flat</span></div>
+            <div class="prod-mini-row"><span>Annual fee</span><span class="v cc-val mint">$0 forever</span></div>
+            <div class="prod-mini-row"><span>Est. rewards/yr</span><span class="v">$286</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ TAB 2: PROACTIVE OUTREACH ═══ -->
+<div id="panel-proactive" class="panel">
+  <!-- Sub-tab bar for Proactive Outreach -->
+  <div class="sub-tab-bar" id="proactive-subtabs">
+    <button class="sub-tab-btn active" onclick="showSubTab('proactive', 'transaction')">✈️ Transaction signal detection</button>
+    <button class="sub-tab-btn" onclick="showSubTab('proactive', 'lifeevent')">🎯 Life event detection</button>
+  </div>
+  
+  <!-- Transaction Signal Detection Sub-panel -->
+  <div id="subpanel-proactive-transaction" class="sub-panel active">
+    <div class="col-phone">
+      <div class="phone-shell">
+        <div class="phone-island"></div>
+        <div class="phone-screen">
+          <div class="messenger-bar">
+            <span class="m-back">‹</span>
+            <div class="m-avatar" style="background:#075e54">W</div>
+            <div class="m-info"><div class="m-name">@PayPalCreditAgent</div><div class="m-status">WhatsApp</div></div>
+          </div>
+          <div class="chat-feed" id="feed-proactive"></div>
+          <div class="chat-input-bar">
+            <input class="chat-input" id="inp-proactive" placeholder="Reply to agent…" onkeydown="if(event.key==='Enter')sendMsg('proactive')"/>
+            <button class="chat-send" onclick="sendMsg('proactive')">↑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-info">
+      <div class="card">
+        <div class="card-h"><h3>📡 Trigger: Travel Signal Detected</h3><span class="badge badge-blue">Auto-fired</span></div>
+        <div class="card-b">
+          <div class="le-trigger" style="background:linear-gradient(135deg,#0c4a6e,var(--sky))">
+            <div class="le-t-label">✈ MCC Travel Signal</div>
+            <div class="le-t-title">Singapore Airlines booking detected</div>
+            <div class="le-t-desc">3 international bookings in 45 days · No travel credit card on file · High spend profile</div>
+          </div>
+          <div class="flow-steps" id="proactive-signals">
+            <div class="fstep done"><div class="fnum">✓</div><div class="fstep-body"><h4>Signal detected</h4><p>Airline MCC on PayPal transaction</p></div><span class="fstep-tag tag-done">Done</span></div>
+            <div class="fstep done"><div class="fnum">✓</div><div class="fstep-body"><h4>Eligibility pre-check</h4><p>Soft pull — Miles+ likely approved</p></div><span class="fstep-tag tag-done">Done</span></div>
+            <div class="fstep done"><div class="fnum">✓</div><div class="fstep-body"><h4>Frequency check</h4><p>Last outreach 42 days ago — clear</p></div><span class="fstep-tag tag-done">Done</span></div>
+            <div class="fstep active" id="pro-send"><div class="fnum">4</div><div class="fstep-body"><h4>Proactive message sent</h4><p>WhatsApp notification pushed to Arun</p></div><span class="fstep-tag tag-active">Sent</span></div>
+            <div class="fstep pending" id="pro-engage"><div class="fnum">5</div><div class="fstep-body"><h4>User engagement</h4><p>Awaiting reply…</p></div><span class="fstep-tag tag-wait">Pending</span></div>
+            <div class="fstep pending" id="pro-convert"><div class="fnum">6</div><div class="fstep-body"><h4>Conversion</h4><p>In-thread application</p></div><span class="fstep-tag tag-wait">Pending</span></div>
+          </div>
+          <div class="play-bar">
+            <button class="pbtn" id="pro-prev" onclick="stepPro(-1)" disabled>← Prev</button>
+            <button class="pbtn primary" id="pro-next" onclick="stepPro(1)">Next →</button>
+            <button class="pbtn" onclick="resetPro()">↺</button>
+            <span class="step-counter" id="pro-counter">Step 1 / 6</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-h"><h3>📊 Outreach Performance</h3></div>
+        <div class="card-b">
+          <div class="sbar-wrap">
+            <div class="sbar-row"><span class="sbar-label">Open rate</span><div class="sbar-track"><div class="sbar-fill" style="width:61%"></div></div><span class="sbar-val">61%</span></div>
+            <div class="sbar-row"><span class="sbar-label">Response rate</span><div class="sbar-track"><div class="sbar-fill" style="width:43%"></div></div><span class="sbar-val">43%</span></div>
+            <div class="sbar-row"><span class="sbar-label">Conversion</span><div class="sbar-track"><div class="sbar-fill" style="width:23%"></div></div><span class="sbar-val">23%</span></div>
+            <div class="sbar-row"><span class="sbar-label">Email (baseline)</span><div class="sbar-track"><div class="sbar-fill" style="width:8%;background:#cbd5e1"></div></div><span class="sbar-val" style="color:var(--slate)">8%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Life Event Detection Sub-panel -->
+  <div id="subpanel-proactive-lifeevent" class="sub-panel">
+    <div class="col-phone">
+      <div class="phone-shell">
+        <div class="phone-island"></div>
+        <div class="phone-screen">
+          <div class="messenger-bar">
+            <span class="m-back">‹</span>
+            <div class="m-avatar" style="background:#1e40af">T</div>
+            <div class="m-info"><div class="m-name">@PayPalCreditAgent</div><div class="m-status">Telegram</div></div>
+          </div>
+          <div class="chat-feed" id="feed-lifeevent"></div>
+          <div class="chat-input-bar">
+            <input class="chat-input" id="inp-lifeevent" placeholder="Reply…" onkeydown="if(event.key==='Enter')sendMsg('lifeevent')"/>
+            <button class="chat-send" onclick="sendMsg('lifeevent')">↑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-info">
+      <div class="card">
+        <div class="card-h"><h3>🎯 Life-Event Signal Engine</h3><span class="badge badge-gold">New parent detected</span></div>
+        <div class="card-b">
+          <div class="le-trigger">
+            <div class="le-t-label">🔬 Signal cluster</div>
+            <div class="le-t-title">Life event: Young family forming</div>
+            <div class="le-t-desc">3 correlated signals identified over 60-day rolling window → eligibility re-scored automatically</div>
+          </div>
+          <div class="le-signals" style="margin-top:12px">
+            <div class="le-sig"><div class="le-sig-icon">👶</div><div class="le-sig-body"><h4>Recurring childcare spend</h4><p>₹8,400/mo at MCC 8351 — 3 consecutive months</p></div><div class="le-sig-conf">92% conf.</div></div>
+            <div class="le-sig"><div class="le-sig-icon">🏥</div><div class="le-sig-body"><h4>Paediatric clinic payments</h4><p>2 transactions at Dr. Mehta Clinic (MCC 8099)</p></div><div class="le-sig-conf">88% conf.</div></div>
+            <div class="le-sig"><div class="le-sig-icon">🛒</div><div class="le-sig-body"><h4>Baby product retailers</h4><p>FirstCry, Mothercare purchases increased 340%</p></div><div class="le-sig-conf">97% conf.</div></div>
+            <div class="le-sig"><div class="le-sig-icon">🏠</div><div class="le-sig-body"><h4>Address verified stable</h4><p>Same address 18+ months — settled household</p></div><div class="le-sig-conf">100%</div></div>
+          </div>
+          <div class="info-note">Eligibility re-scored: PayPal Family Rewards — <strong>Pre-approved</strong>. Recommended credit limit: ₹3,00,000.</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-h"><h3>▶ Conversation Playback</h3></div>
+        <div class="card-b">
+          <div class="play-bar">
+            <button class="pbtn" id="le-prev" onclick="stepLE(-1)" disabled>← Prev</button>
+            <button class="pbtn primary" id="le-next" onclick="stepLE(1)">Next →</button>
+            <button class="pbtn" onclick="resetLE()">↺</button>
+            <span class="step-counter" id="le-counter">Step 1 / 7</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ TAB 3: CREDIT OPTIMIZER AGENT ═══ -->
+<div id="panel-optimizer" class="panel">
+  <!-- Sub-tab bar for Credit Optimizer -->
+  <div class="sub-tab-bar" id="optimizer-subtabs">
+    <button class="sub-tab-btn active" onclick="showSubTab('optimizer', 'portfolio')">🗂 Multi-product portfolio</button>
+    <button class="sub-tab-btn" onclick="showSubTab('optimizer', 'simulation')">📊 Spend simulation</button>
+  </div>
+
+  <!-- Portfolio Sub-panel -->
+  <div id="subpanel-optimizer-portfolio" class="sub-panel active">
+    <div class="col-phone">
+      <div class="phone-shell">
+        <div class="phone-island"></div>
+        <div class="phone-screen">
+          <div class="messenger-bar">
+            <span class="m-back">‹</span>
+            <div class="m-avatar">P</div>
+            <div class="m-info"><div class="m-name">@PayPalCreditAgent</div><div class="m-status">Telegram</div></div>
+          </div>
+          <div class="chat-feed" id="feed-portfolio"></div>
+          <div class="chat-input-bar">
+            <input class="chat-input" id="inp-portfolio" placeholder="Ask about your cards…" onkeydown="if(event.key==='Enter')sendMsg('portfolio')"/>
+            <button class="chat-send" onclick="sendMsg('portfolio')">↑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-info">
+      <div class="metrics">
+        <div class="metric"><div class="metric-l">Total credit</div><div class="metric-v">$42K</div><div class="metric-d up">2 products</div></div>
+        <div class="metric"><div class="metric-l">Utilisation</div><div class="metric-v">18%</div><div class="metric-d up">✓ Healthy</div></div>
+        <div class="metric"><div class="metric-l">Rewards YTD</div><div class="metric-v">$698</div><div class="metric-d up">↑ 22%</div></div>
+      </div>
+      <div class="port-card">
+        <div class="port-top b"><div class="port-chip"></div><div><div class="port-name">PayPal Miles+</div><div class="port-num">•••• 4821</div></div><div class="port-bal"><div class="port-bal-v">$3,240</div><div class="port-bal-l">balance</div></div></div>
+        <div class="port-body">
+          <div class="port-row"><span class="port-key">Limit</span><span class="port-val">$22,000</span></div>
+          <div class="port-row"><span class="port-key">Available</span><span class="port-val" style="color:var(--mint)">$18,760</span></div>
+          <div class="port-row"><span class="port-key">Utilisation 14.7%</span></div>
+          <div class="util-bar"><div class="util-fill util-good" style="width:14.7%"></div></div>
+          <div class="port-row"><span class="port-key">Miles balance</span><span class="port-val" style="color:var(--blue)">42,180 pts</span></div>
+          <div class="port-nudge">✈ 7,820 miles from a free Mumbai–Dubai return. Spend $260 more on travel.</div>
+        </div>
+      </div>
+      <div class="port-card">
+        <div class="port-top t"><div class="port-chip"></div><div><div class="port-name">PayPal Everyday Cash</div><div class="port-num">•••• 9203</div></div><div class="port-bal"><div class="port-bal-v">$580</div><div class="port-bal-l">balance</div></div></div>
+        <div class="port-body">
+          <div class="port-row"><span class="port-key">Limit</span><span class="port-val">$20,000</span></div>
+          <div class="port-row"><span class="port-key">Utilisation 2.9%</span></div>
+          <div class="util-bar"><div class="util-fill util-good" style="width:2.9%"></div></div>
+          <div class="port-row"><span class="port-key">Cash back YTD</span><span class="port-val" style="color:var(--mint)">$114.20</span></div>
+          <div class="port-nudge">💡 Use this card for groceries — Miles+ only earns 1x there, Everyday Cash earns 2%.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>🤖 Agent Playback</h3></div>
+        <div class="card-b">
+          <div class="play-bar">
+            <button class="pbtn" id="port-prev" onclick="stepPort(-1)" disabled>← Prev</button>
+            <button class="pbtn primary" id="port-next" onclick="stepPort(1)">Next →</button>
+            <button class="pbtn" onclick="resetPort()">↺</button>
+            <span class="step-counter" id="port-counter">Step 1 / 6</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spend Simulation Sub-panel -->
+  <div id="subpanel-optimizer-simulation" class="sub-panel">
+    <div class="col-phone">
+      <div class="phone-shell">
+        <div class="phone-island"></div>
+        <div class="phone-screen">
+          <div class="messenger-bar">
+            <span class="m-back">‹</span>
+            <div class="m-avatar">P</div>
+            <div class="m-info"><div class="m-name">@PayPalCreditAgent</div><div class="m-status">● Active now</div></div>
+          </div>
+          <div class="chat-feed" id="feed-simulation"></div>
+          <div class="chat-input-bar">
+            <input class="chat-input" id="inp-simulation" placeholder="Ask about rewards…" onkeydown="if(event.key==='Enter')sendMsg('simulation')"/>
+            <button class="chat-send" onclick="sendMsg('simulation')">↑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-info">
+      <div class="sim-result-box">
+        <div class="srb-label">PayPal Miles+ — Projected Annual Rewards</div>
+        <div class="srb-val" id="sim-total">$412</div>
+        <div class="srb-sub">Based on your PayPal transaction history</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>🎛 Adjust Your Spend Profile</h3></div>
+        <div class="card-b">
+          <div class="sim-group">
+            <div class="sim-row"><span>✈ Travel & flights</span><span class="sv" id="lv-travel">$4,200/yr</span></div>
+            <input type="range" min="0" max="15000" step="200" value="4200" oninput="updateSim(this,'travel')">
+          </div>
+          <div class="sim-group">
+            <div class="sim-row"><span>🍽 Dining</span><span class="sv" id="lv-dining">$2,800/yr</span></div>
+            <input type="range" min="0" max="10000" step="200" value="2800" oninput="updateSim(this,'dining')">
+          </div>
+          <div class="sim-group">
+            <div class="sim-row"><span>🛒 Shopping</span><span class="sv" id="lv-shop">$3,600/yr</span></div>
+            <input type="range" min="0" max="20000" step="200" value="3600" oninput="updateSim(this,'shop')">
+          </div>
+          <div class="sim-group">
+            <div class="sim-row"><span>⛽ Other</span><span class="sv" id="lv-other">$1,800/yr</span></div>
+            <input type="range" min="0" max="8000" step="200" value="1800" oninput="updateSim(this,'other')">
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-h"><h3>🔀 Card Comparison</h3></div>
+        <div class="card-b">
+          <div class="sbar-wrap">
+            <div class="sbar-row"><span class="sbar-label">PayPal Miles+</span><div class="sbar-track"><div class="sbar-fill" id="bar-miles" style="width:65%"></div></div><span class="sbar-val" id="val-miles">$412</span></div>
+            <div class="sbar-row"><span class="sbar-label">Everyday Cash</span><div class="sbar-track"><div class="sbar-fill" id="bar-cash" style="width:45%;background:var(--mint)"></div></div><span class="sbar-val" id="val-cash" style="color:var(--mint)">$286</span></div>
+            <div class="sbar-row"><span class="sbar-label">PP Prestige</span><div class="sbar-track"><div class="sbar-fill" id="bar-prestige" style="width:85%;background:#7c3aed"></div></div><span class="sbar-val" id="val-prestige" style="color:#7c3aed">$890</span></div>
+          </div>
+          <div class="play-bar" style="margin-top:14px">
+            <button class="pbtn" id="sim-prev" onclick="stepSim(-1)" disabled>← Prev</button>
+            <button class="pbtn primary" id="sim-next" onclick="stepSim(1)">Next →</button>
+            <button class="pbtn" onclick="resetSim()">↺</button>
+            <span class="step-counter" id="sim-counter">Step 1 / 5</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ TAB 4: CREDIT BUILDER ═══ -->
+<div id="panel-builder" class="panel">
+  <div class="col-phone">
+    <div class="phone-shell">
+      <div class="phone-island"></div>
+      <div class="phone-screen">
+        <div class="messenger-bar">
+          <span class="m-back">‹</span>
+          <div class="m-avatar">P</div>
+          <div class="m-info"><div class="m-name">@PayPalCreditAgent</div><div class="m-status">● Active now</div></div>
+        </div>
+        <div class="chat-feed" id="feed-builder"></div>
+        <div class="chat-input-bar">
+          <input class="chat-input" id="inp-builder" placeholder="Ask about your credit…" onkeydown="if(event.key==='Enter')sendMsg('builder')"/>
+          <button class="chat-send" onclick="sendMsg('builder')">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-info">
+    <div class="card">
+      <div class="card-h"><h3>📈 Credit Building Path — Priya R.</h3><span class="badge badge-gold">Score: 648</span></div>
+      <div class="card-b">
+        <div style="background:linear-gradient(135deg,var(--navy),var(--blue));border-radius:13px;padding:16px;color:white;text-align:center;margin-bottom:16px">
+          <div style="font-size:11px;opacity:.7;margin-bottom:4px">CIBIL Score</div>
+          <div style="font-size:46px;font-weight:700;letter-spacing:-3px">648</div>
+          <div style="font-size:12px;opacity:.7;margin-bottom:12px">Fair — Building phase</div>
+          <div style="height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden">
+            <div style="width:52%;height:100%;background:var(--gold);border-radius:3px"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;opacity:.5;margin-top:4px"><span>300</span><span>550</span><span>700</span><span>850</span></div>
+        </div>
+        <div class="cpath">
+          <div class="cpath-step"><div class="cpath-dot done"></div><div class="cpath-card"><h4>PayPal Secured Card — Active ✓</h4><p>₹5,000 deposit · 5 months on-time payments · CIBIL reporting live</p><span class="cp-tag cp-done">Enrolled</span></div></div>
+          <div class="cpath-step"><div class="cpath-dot now"></div><div class="cpath-card"><h4>Milestone: Score 680 → Unsecured</h4><p>Agent monitors monthly. At 680 you get an auto-upgrade offer + deposit returned in 7 days.</p><span class="cp-tag cp-now">~3 months away</span></div></div>
+          <div class="cpath-step"><div class="cpath-dot fut"></div><div class="cpath-card"><h4>PayPal Everyday Cash</h4><p>Graduate to 2% cashback unsecured card.</p><span class="cp-tag cp-fut">Upcoming</span></div></div>
+          <div class="cpath-step"><div class="cpath-dot fut"></div><div class="cpath-card"><h4>Score 720+ → Premium eligible</h4><p>Miles+ and travel products unlock. Agent proactively notifies.</p><span class="cp-tag cp-fut">Month 18+</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-h"><h3>▶ Conversation Playback</h3></div>
+      <div class="card-b">
+        <div class="play-bar">
+          <button class="pbtn" id="bl-prev" onclick="stepBL(-1)" disabled>← Prev</button>
+          <button class="pbtn primary" id="bl-next" onclick="stepBL(1)">Next →</button>
+          <button class="pbtn" onclick="resetBL()">↺</button>
+          <span class="step-counter" id="bl-counter">Step 1 / 8</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ TAB 5: SESSION CONTINUITY ═══ -->
+<div id="panel-session" class="panel">
+  <div class="col-phone">
+    <div class="phone-shell">
+      <div class="phone-island"></div>
+      <div class="phone-screen">
+        <div class="messenger-bar">
+          <span class="m-back">‹</span>
+          <div class="m-avatar" style="background:#1565C0">L</div>
+          <div class="m-info"><div class="m-name">@PayPalCreditAgent</div><div class="m-status">Web Browser</div></div>
+        </div>
+        <div class="chat-feed" id="feed-session"></div>
+        <div class="chat-input-bar">
+          <input class="chat-input" id="inp-session" placeholder="Continue your session…" onkeydown="if(event.key==='Enter')sendMsg('session')"/>
+          <button class="chat-send" onclick="sendMsg('session')">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-info">
+    <div class="card">
+      <div class="card-h"><h3>🔄 Session State</h3><span class="badge badge-mint">Resumed on Web</span></div>
+      <div class="card-b">
+        <div class="platform-list">
+          <div class="platform-item"><div class="platform-icon" style="background:#e8f5e9">📱</div><div><h4>Telegram (Mobile)</h4><p>Session started · 9:14 AM · Intent captured · Auth complete</p></div><div class="platform-status ps-paused">Paused</div></div>
+          <div class="platform-item"><div class="platform-icon" style="background:#e3f2fd">💻</div><div><h4>Web Browser (Laptop)</h4><p>Session resumed · 2:31 PM · 90% complete</p></div><div class="platform-status ps-active">Active now</div></div>
+          <div class="platform-item"><div class="platform-icon" style="background:#f3e5f5">📲</div><div><h4>WhatsApp</h4><p>Available if needed</p></div><div class="platform-status ps-ready">Ready</div></div>
+        </div>
+        <div class="info-note" style="margin-top:12px">The session token is device-bound and encrypted. State is stored server-side — the messaging platforms never hold financial data.</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-h"><h3>📋 Persisted Session Context</h3></div>
+      <div class="card-b">
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div class="port-row"><span class="port-key">User</span><span class="port-val">Arun Sharma (verified)</span></div>
+          <div class="port-row"><span class="port-key">Intent</span><span class="port-val">Travel card — Miles+ selected</span></div>
+          <div class="port-row"><span class="port-key">Application</span><span class="port-val" style="color:var(--gold)">90% complete</span></div>
+          <div class="port-row"><span class="port-key">Missing field</span><span class="port-val" style="color:var(--rose)">PAN last 4 digits</span></div>
+          <div class="port-row"><span class="port-key">Session age</span><span class="port-val">5h 17m</span></div>
+          <div class="port-row"><span class="port-key">Expires</span><span class="port-val">In 19h (24h window)</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-h"><h3>▶ Conversation Playback</h3></div>
+      <div class="card-b">
+        <div class="play-bar">
+          <button class="pbtn" id="se-prev" onclick="stepSE(-1)" disabled>← Prev</button>
+          <button class="pbtn primary" id="se-next" onclick="stepSE(1)">Next →</button>
+          <button class="pbtn" onclick="resetSE()">↺</button>
+          <span class="step-counter" id="se-counter">Step 1 / 6</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ TAB 6: COLLECTIONS ═══ -->
+<div id="panel-collections" class="panel">
+  <div class="col-phone">
+    <div class="phone-shell">
+      <div class="phone-island"></div>
+      <div class="phone-screen">
+        <div class="messenger-bar">
+          <span class="m-back">‹</span>
+          <div class="m-avatar" style="background:#7c3aed">P</div>
+          <div class="m-info"><div class="m-name">@PayPalCreditAgent</div><div class="m-status">● Active now</div></div>
+        </div>
+        <div class="chat-feed" id="feed-collections"></div>
+        <div class="chat-input-bar">
+          <input class="chat-input" id="inp-collections" placeholder="Reply to agent…" onkeydown="if(event.key==='Enter')sendMsg('collections')"/>
+          <button class="chat-send" onclick="sendMsg('collections')">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-info">
+    <div class="card">
+      <div class="card-h"><h3>⚖️ Collections Case #C-2024-00391</h3><span class="badge badge-rose">61 Days Past Due</span></div>
+      <div class="card-b">
+        <div class="dtimeline">
+          <div class="dte"><div class="dte-dot ok">✓</div><div class="dte-body"><h4>Day 1 — Soft reminder sent</h4><p>Payment due notice · WhatsApp · No response</p><div class="dte-time">Mar 1</div></div></div>
+          <div class="dte"><div class="dte-dot ok">✓</div><div class="dte-body"><h4>Day 7 — Escalated nudge</h4><p>SMS + WhatsApp · "Still time to avoid late fee"</p><div class="dte-time">Mar 7</div></div></div>
+          <div class="dte"><div class="dte-dot p">⏳</div><div class="dte-body"><h4>Day 30 — Agent-led outreach</h4><p>Personalised message · Hardship flag checked · Flexible offer presented</p><div class="dte-time">Mar 30</div></div></div>
+          <div class="dte"><div class="dte-dot d">!</div><div class="dte-body"><h4>Day 61 — Active collections dialogue</h4><p>Customer engaged · Settlement negotiation in progress</p><div class="dte-time">Today</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-h"><h3>📋 Account Snapshot</h3></div>
+      <div class="card-b">
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div class="port-row"><span class="port-key">Customer</span><span class="port-val">Rahul M.</span></div>
+          <div class="port-row"><span class="port-key">Card</span><span class="port-val">PayPal Miles+ ••••3847</span></div>
+          <div class="port-row"><span class="port-key">Overdue amount</span><span class="port-val" style="color:var(--rose)">$1,240</span></div>
+          <div class="port-row"><span class="port-key">Minimum due</span><span class="port-val" style="color:var(--rose)">$148</span></div>
+          <div class="port-row"><span class="port-key">Days past due</span><span class="port-val" style="color:var(--rose)">61 days</span></div>
+          <div class="port-row"><span class="port-key">Hardship flag</span><span class="port-val" style="color:var(--gold)">Possible — spend dropped 60%</span></div>
+          <div class="port-row"><span class="port-key">Human escalation</span><span class="port-val">Auto at Day 90 if unresolved</span></div>
+        </div>
+        <div class="info-note" style="margin-top:10px">⚖️ All agent communications comply with FDCPA — no harassment, no contact before 8 AM or after 9 PM, clear right-to-dispute disclosure included in every message.</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-h"><h3>▶ Conversation Playback</h3></div>
+      <div class="card-b">
+        <div class="play-bar">
+          <button class="pbtn" id="co-prev" onclick="stepCO(-1)" disabled>← Prev</button>
+          <button class="pbtn primary" id="co-next" onclick="stepCO(1)">Next →</button>
+          <button class="pbtn" onclick="resetCO()">↺</button>
+          <span class="step-counter" id="co-counter">Step 1 / 9</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /panels -->
+</div><!-- /app -->
+
+<script>
+// ══════════════════════════════════════════
+// UTILITY
+// ══════════════════════════════════════════
+function showTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function showSubTab(panelName, subName){
+  const panel = document.getElementById('panel-'+panelName);
+  panel.querySelectorAll('.sub-tab-btn').forEach(b=>b.classList.remove('active'));
+  panel.querySelectorAll('.sub-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('subpanel-'+panelName+'-'+subName).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function addMsg(feedId, type, content){
+  const feed = document.getElementById('feed-'+feedId);
+  const row = document.createElement('div');
+  row.className = 'msg-row '+type;
+  if(type==='agent'){
+    const tag = document.createElement('div'); tag.className='agent-tag'; tag.textContent='PayPal Credit Agent';
+    row.appendChild(tag);
+  }
+  if(typeof content === 'string'){
+    const b = document.createElement('div'); b.className='bubble '+type; b.textContent=content;
+    row.appendChild(b);
+  } else {
+    row.appendChild(content);
+  }
+  feed.appendChild(row);
+  feed.scrollTop=feed.scrollHeight;
+}
+
+function addTime(feedId, txt){
+  const feed = document.getElementById('feed-'+feedId);
+  const d=document.createElement('div');
+  d.style.cssText='text-align:center;font-size:10px;color:#9ca3af;padding:4px 0;font-family:\'JetBrains Mono\',monospace';
+  d.textContent=txt; feed.appendChild(d);
+}
+
+function makeCard(colorClass, titleHTML, rows, actions){
+  const wrap = document.createElement('div'); wrap.className='chat-card';
+  const hdr = document.createElement('div'); hdr.className='chat-card-header '+colorClass;
+  hdr.innerHTML=titleHTML; wrap.appendChild(hdr);
+  const body = document.createElement('div'); body.className='chat-card-body';
+  rows.forEach(r=>{
+    const d=document.createElement('div'); d.className='cc-row';
+    d.innerHTML='<span>'+r[0]+'</span><span class="cc-val '+(r[2]||'')+'">'+r[1]+'</span>';
+    body.appendChild(d);
+  }); wrap.appendChild(body);
+  if(actions){
+    const act=document.createElement('div'); act.className='chat-card-actions';
+    actions.forEach(a=>{
+      const btn=document.createElement('button'); btn.className='ca-btn '+a.cls; btn.textContent=a.label;
+      act.appendChild(btn);
+    }); wrap.appendChild(act);
+  }
+  return wrap;
+}
+
+function makeChips(feedId, chips){
+  const row=document.createElement('div'); row.className='chip-row';
+  chips.forEach(c=>{
+    const ch=document.createElement('div'); ch.className='chip'; ch.textContent=c;
+    ch.onclick=()=>ch.classList.toggle('picked'); row.appendChild(ch);
+  });
+  const feed=document.getElementById('feed-'+feedId);
+  feed.appendChild(row); feed.scrollTop=feed.scrollHeight;
+}
+
+function makeAuth(feedId){
+  const ac=document.createElement('div'); ac.className='auth-card';
+  ac.innerHTML='<div class="auth-title">🔐 Verify with PayPal</div><div class="auth-sub">One tap — your data stays private</div><div class="auth-btn">Tap to authenticate →</div>';
+  const feed=document.getElementById('feed-'+feedId);
+  const row=document.createElement('div'); row.className='msg-row agent';
+  const tag=document.createElement('div'); tag.className='agent-tag'; tag.textContent='PayPal Credit Agent';
+  row.appendChild(tag); row.appendChild(ac);
+  feed.appendChild(row); feed.scrollTop=feed.scrollHeight;
+}
+
+function makeApproved(feedId, title, sub, cells){
+  const ac=document.createElement('div'); ac.className='approved-card';
+  ac.innerHTML='<div class="ap-emoji">🎉</div><div class="ap-title">'+title+'</div><div class="ap-sub">'+sub+'</div><div class="ap-grid">'+cells.map(c=>'<div class="ap-cell"><div class="ap-label">'+c[0]+'</div><div class="ap-val">'+c[1]+'</div></div>').join('')+'</div>';
+  const feed=document.getElementById('feed-'+feedId);
+  const row=document.createElement('div'); row.className='msg-row agent';
+  const tag=document.createElement('div'); tag.className='agent-tag'; tag.textContent='PayPal Credit Agent';
+  row.appendChild(tag); row.appendChild(ac);
+  feed.appendChild(row); feed.scrollTop=feed.scrollHeight;
+}
+
+function setSignal(id, state){
+  const el=document.getElementById(id); if(!el)return;
+  el.classList.remove('active','done','pending');
+  const tag=el.querySelector('.fstep-tag');
+  if(!tag)return;
+  tag.classList.remove('tag-active','tag-done','tag-wait');
+  if(state==='active'){el.classList.add('active');tag.classList.add('tag-active');tag.textContent='Running';}
+  else if(state==='done'){el.classList.add('done');tag.classList.add('tag-done');tag.textContent='Done ✓';}
+  else{el.classList.add('pending');tag.classList.add('tag-wait');tag.textContent='Pending';}
+}
+
+function updateControls(prevId,nextId,ctrId,cur,total){
+  document.getElementById(prevId).disabled=cur===0;
+  document.getElementById(nextId).disabled=cur===total-1;
+  document.getElementById(ctrId).textContent='Step '+(cur+1)+' / '+total;
+}
+
+// Free-type user messages
+function sendMsg(tab){
+  const inp=document.getElementById('inp-'+tab);
+  const txt=inp.value.trim(); if(!txt)return;
+  addMsg(tab,'user',txt);
+  inp.value='';
+  setTimeout(()=>addMsg(tab,'agent','Got it! Use the playback controls on the right to walk through the guided flow for this scenario.'),800);
+}
+
+// ══════════════════════════════════════════
+// TAB 1 — LIVE CHAT
+// ══════════════════════════════════════════
+const liveSteps=[
+  ()=>{addTime('live','Today, 2:14 PM');addMsg('live','user','Hi, I travel a lot for work and want a credit card with good travel rewards and lounge access.');setSignal('ls-intent','active');},
+  ()=>{setSignal('ls-intent','done');setSignal('ls-context','active');addMsg('live','agent',"Hey Arun! ✈️ Sounds like you're a frequent flyer — exciting! I can help you find the perfect travel card.\n\nJust to tailor this: Are your trips mostly international, domestic, or a mix?");makeChips('live',['Mostly international','Mostly domestic','About 50/50']);},
+  ()=>{addMsg('live','user','Mostly international — Southeast Asia and Europe mainly.');setSignal('ls-context','done');setSignal('ls-clarify','active');},
+  ()=>{addMsg('live','agent','Love it. Do you have a rough idea of how much you spend on travel per year — flights, hotels, the works?');makeChips('live',['Under $3,000','$3K–$8K','$8K–$15K','$15K+']);setSignal('ls-clarify','done');setSignal('ls-reco','active');},
+  ()=>{addMsg('live','user','Probably around $5,000–$6,000 a year.');setSignal('ls-reco','done');const r=makeCard('blue','<div><div class="ch-title">✨ My top pick for you</div><div class="ch-sub">PayPal Miles+ · Pre-qualified</div></div>',[['Sign-up bonus','75,000 miles','mint'],['Lounge access','Priority Pass ✓','mint'],['FX markup','0% on all currencies','mint'],['Annual fee','$99 (waived Year 1)',''],['Est. value/year','$412 in rewards','gold']],[{label:'Apply now',cls:'primary'},{label:'Compare options',cls:'secondary'}]);addMsg('live','agent',r);addMsg('live','agent','Based on your travel patterns, the Miles+ card would earn you about $412/year in rewards, plus free lounge access worldwide. Want to apply? I can pre-fill almost everything.');document.getElementById('live-products').style.display='block';setSignal('ls-prefill','active');},
+  ()=>{addMsg('live','user','Yes, let\'s do it!');makeAuth('live');setSignal('ls-prefill','done');setSignal('ls-decision','active');},
+  ()=>{const r=makeCard('mint','<div><div class="ch-title">📋 Application pre-filled</div><div class="ch-sub">19 of 20 fields complete</div></div>',[['Name','Arun Sharma ✓','mint'],['Address','14 MG Road, Bengaluru ✓','mint'],['Income (detected)','₹24,00,000/yr ✓','mint'],['PAN','BXXXX1234X ✓','mint'],['Employer','Infosys Ltd ✓','mint']],[{label:'Confirm & submit',cls:'primary'},{label:'Edit details',cls:'secondary'}]);addMsg('live','agent',r);addMsg('live','agent','Almost there! I\'ve pre-filled 19 of 20 fields from your PayPal profile. Just confirm and we\'ll get an instant decision.');setSignal('ls-decision','done');},
+  ()=>{addMsg('live','user','Confirmed!');addMsg('live','agent','Submitting your application now… ⏳');},
+  ()=>{makeApproved('live','You\'re approved! 🎉','PayPal Miles+ · Instant decision',[['Credit limit','$22,000'],['APR','19.99%'],['Sign-up bonus','75K miles'],['Card delivery','3–5 days']]);addMsg('live','agent','Congratulations, Arun! Your Miles+ card is on its way. You can add it to Apple Pay right now and start earning miles today. ✈️');makeChips('live',['Add to Apple Pay','View my benefits','Track delivery']);},
+];
+let lvCur=0;
+function stepLive(d){lvCur=Math.max(0,Math.min(liveSteps.length-1,lvCur+d));if(d>0)liveSteps[lvCur]();else{resetLive();for(let i=0;i<=lvCur;i++)liveSteps[i]();}updateControls('lv-prev','lv-next','lv-counter',lvCur,liveSteps.length);document.getElementById('live-step-label').textContent='Step '+(lvCur+1)+' / '+liveSteps.length;}
+function resetLive(){document.getElementById('feed-live').innerHTML='';document.querySelectorAll('#live-signals .fstep').forEach((el,i)=>{el.classList.remove('active','done');el.classList.add(i===0?'active':'pending');const t=el.querySelector('.fstep-tag');if(t){t.classList.remove('tag-active','tag-done');t.classList.add(i===0?'tag-active':'tag-wait');t.textContent=i===0?'Running':'Pending';}});document.getElementById('live-products').style.display='none';lvCur=0;updateControls('lv-prev','lv-next','lv-counter',0,liveSteps.length);document.getElementById('live-step-label').textContent='Step 1 / '+liveSteps.length;}
+function sendLive(){const inp=document.getElementById('inp-live');const txt=inp.value.trim();if(!txt)return;addMsg('live','user',txt);inp.value='';setTimeout(()=>addMsg('live','agent','Got it! Use the playback controls on the right to walk through the guided flow.'),800);}
+liveSteps[0](); updateControls('lv-prev','lv-next','lv-counter',0,liveSteps.length);
+
+// ══════════════════════════════════════════
+// TAB 2 — PROACTIVE OUTREACH (Transaction Signal)
+// ══════════════════════════════════════════
+const proSteps=[
+  ()=>{addTime('proactive','Today, 11:42 AM · WhatsApp');addMsg('proactive','agent',"Hi Arun! 👋 I noticed you just booked a Singapore Airlines flight — exciting trip coming up!\n\nQuick thought: You don't have a travel credit card yet, and you could be earning free lounge access + 3x miles on that booking. Want me to show you a 60-second option?");makeChips('proactive',['Yes, show me','Not right now','Stop these messages']);},
+  ()=>{addMsg('proactive','user','Yes, show me');setSignal('pro-engage','active');setSignal('pro-send','done');},
+  ()=>{setSignal('pro-engage','done');const r=makeCard('blue','<div><div class="ch-title">✨ PayPal Miles+</div><div class="ch-sub">Pre-approved · Instant decision</div></div>',[['Sign-up bonus','75,000 miles','mint'],['On your SQ booking','1,240 bonus miles','mint'],['Lounge access','Changi T3 included ✓','mint'],['FX fees','₹0 on this trip','gold']],[{label:'Apply in 60 sec',cls:'primary'},{label:'More details',cls:'secondary'}]);addMsg('proactive','agent',r);addMsg('proactive','agent','Since you fly 3+ times internationally per year, this card would save you roughly $400/year. And you\'re pre-approved — I just need a quick tap to confirm.');setSignal('pro-convert','active');},
+  ()=>{addMsg('proactive','user','Apply in 60 sec');makeAuth('proactive');},
+  ()=>{makeApproved('proactive','Approved! 🎉','Miles+ is yours · Card on the way',[['Credit limit','$22,000'],['Bonus miles','75,000'],['Lounge access','Priority Pass'],['Delivery','3–5 days']]);setSignal('pro-convert','done');},
+  ()=>{addMsg('proactive','agent',"Done! Your Miles+ card is active in your PayPal wallet. Use it for your Singapore trip and you'll earn 1,240 miles on that flight alone. ✈️\n\nHave an amazing trip, Arun!");},
+];
+let proCur=0;
+function stepPro(d){proCur=Math.max(0,Math.min(proSteps.length-1,proCur+d));if(d>0)proSteps[proCur]();else{resetPro();for(let i=0;i<=proCur;i++)proSteps[i]();}updateControls('pro-prev','pro-next','pro-counter',proCur,proSteps.length);}
+function resetPro(){document.getElementById('feed-proactive').innerHTML='';proCur=0;updateControls('pro-prev','pro-next','pro-counter',0,proSteps.length);}
+proSteps[0](); updateControls('pro-prev','pro-next','pro-counter',0,proSteps.length);
+
+// ══════════════════════════════════════════
+// TAB 2B — LIFE EVENT DETECTION
+// ══════════════════════════════════════════
+const leSteps=[
+  ()=>{addTime('lifeevent','Today, 10:30 AM · Telegram');addMsg('lifeevent','agent',"Hi Priya! 👋 Congratulations — it looks like your family is growing! 🍼\n\nI noticed some new patterns in your spending, and I wanted to share something that might help with the extra expenses that come with a little one.");},
+  ()=>{addMsg('lifeevent','user','How did you know? 😅');},
+  ()=>{addMsg('lifeevent','agent',"I spotted a few signals — recurring childcare payments, baby store purchases, and a paediatric clinic visit. Don't worry, your data stays private and secure. 🔒\n\nI actually have a card designed specifically for young families — want to see if you're pre-approved?");makeChips('lifeevent',['Yes, show me','Maybe later','How do you use my data?']);},
+  ()=>{addMsg('lifeevent','user','Yes, show me');const r=makeCard('gold','<div><div class="ch-title">👨‍👩‍👧 PayPal Family Rewards</div><div class="ch-sub">Pre-approved for you</div></div>',[['Childcare cashback','5% (up to ₹5,000/mo)','mint'],['Grocery rewards','3% unlimited','mint'],['Baby essentials','4% at partner stores','mint'],['Annual fee','₹0 first year','gold']],[{label:'Apply now',cls:'primary'},{label:'Compare cards',cls:'secondary'}]);addMsg('lifeevent','agent',r);},
+  ()=>{addMsg('lifeevent','agent',"Based on your current spend, you'd earn about ₹18,000/year in cashback — that's a lot of diapers! 😄\n\nAnd since you've been with PayPal for 3+ years with a great history, you're pre-approved for a ₹3,00,000 limit.");},
+  ()=>{addMsg('lifeevent','user','That sounds great — let\'s do it!');makeAuth('lifeevent');},
+  ()=>{makeApproved('lifeevent','Welcome to the family! 🎉','PayPal Family Rewards · Approved',[['Credit limit','₹3,00,000'],['Childcare bonus','5% cashback'],['Grocery rewards','3% unlimited'],['First year fee','₹0']]);addMsg('lifeevent','agent',"Your card is ready! I've also enrolled you in our Family Perks programme — you'll get exclusive discounts at FirstCry, Mothercare, and more. 🍼\n\nCongrats again on the new addition to your family!");},
+];
+let leCur=0;
+function stepLE(d){leCur=Math.max(0,Math.min(leSteps.length-1,leCur+d));if(d>0)leSteps[leCur]();else{resetLE();for(let i=0;i<=leCur;i++)leSteps[i]();}updateControls('le-prev','le-next','le-counter',leCur,leSteps.length);}
+function resetLE(){document.getElementById('feed-lifeevent').innerHTML='';leCur=0;updateControls('le-prev','le-next','le-counter',0,leSteps.length);}
+leSteps[0](); updateControls('le-prev','le-next','le-counter',0,leSteps.length);
+
+// ══════════════════════════════════════════
+// TAB 3A — PORTFOLIO
+// ══════════════════════════════════════════
+const portSteps=[
+  ()=>{addTime('portfolio','Today, 3:45 PM');addMsg('portfolio','user','Can you give me an overview of my credit cards?');},
+  ()=>{addMsg('portfolio','agent',"Sure thing, Arun! Here's your credit portfolio at a glance:");const r=makeCard('blue','<div><div class="ch-title">📊 Your Credit Overview</div><div class="ch-sub">2 active cards · Healthy utilisation</div></div>',[['Total credit limit','$42,000',''],['Current balance','$3,820',''],['Utilisation','9.1%','mint'],['Rewards earned YTD','$698','gold']],null);addMsg('portfolio','agent',r);},
+  ()=>{addMsg('portfolio','agent',"Your utilisation is excellent at 9.1% — that's great for your credit score! 💪\n\nI noticed you could be earning more on groceries though. Want a tip?");makeChips('portfolio',['Yes, tell me more','Show card details','Check my rewards']);},
+  ()=>{addMsg('portfolio','user','Yes, tell me more');},
+  ()=>{addMsg('portfolio','agent',"Right now you're using Miles+ for groceries, but it only earns 1x there. Your Everyday Cash card earns 2% on groceries!\n\nIf you switched, you'd earn an extra $86/year. Want me to remind you at checkout when you're at a grocery store?");makeChips('portfolio',['Yes, set up reminders','No thanks','Show all my spend categories']);},
+  ()=>{addMsg('portfolio','user','Yes, set up reminders');addMsg('portfolio','agent',"Done! I'll send you a gentle nudge when you're about to pay at a grocery store with the wrong card. 🛒\n\nAnything else you'd like to know about your portfolio?");makeChips('portfolio',['Check rewards balance','Upcoming payments','I\'m good, thanks!']);},
+];
+let portCur=0;
+function stepPort(d){portCur=Math.max(0,Math.min(portSteps.length-1,portCur+d));if(d>0)portSteps[portCur]();else{resetPort();for(let i=0;i<=portCur;i++)portSteps[i]();}updateControls('port-prev','port-next','port-counter',portCur,portSteps.length);}
+function resetPort(){document.getElementById('feed-portfolio').innerHTML='';portCur=0;updateControls('port-prev','port-next','port-counter',0,portSteps.length);}
+portSteps[0](); updateControls('port-prev','port-next','port-counter',0,portSteps.length);
+
+// ══════════════════════════════════════════
+// TAB 3B — SPEND SIMULATION
+// ══════════════════════════════════════════
+let simVals={travel:4200,dining:2800,shop:3600,other:1800};
+function updateSim(el,cat){
+  simVals[cat]=parseInt(el.value);
+  document.getElementById('lv-'+cat).textContent='$'+simVals[cat].toLocaleString()+'/yr';
+  recalcSim();
+}
+function recalcSim(){
+  const miles=Math.round(simVals.travel*.05+simVals.dining*.03+simVals.shop*.02+simVals.other*.01);
+  const cash=Math.round((simVals.travel+simVals.dining+simVals.shop+simVals.other)*.02);
+  const prestige=Math.round(simVals.travel*.07+simVals.dining*.05+simVals.shop*.03+simVals.other*.02);
+  const max=Math.max(miles,cash,prestige,1);
+  document.getElementById('sim-total').textContent='$'+miles;
+  document.getElementById('val-miles').textContent='$'+miles;
+  document.getElementById('val-cash').textContent='$'+cash;
+  document.getElementById('val-prestige').textContent='$'+prestige;
+  document.getElementById('bar-miles').style.width=(miles/max*100)+'%';
+  document.getElementById('bar-cash').style.width=(cash/max*100)+'%';
+  document.getElementById('bar-prestige').style.width=(prestige/max*100)+'%';
+}
+const simSteps=[
+  ()=>{addTime('simulation','Today');addMsg('simulation','user','How much would I earn with different cards based on my spending?');},
+  ()=>{addMsg('simulation','agent',"Great question! I've pulled your actual spending patterns from PayPal. Use the sliders on the right to adjust categories and see real-time reward projections across different cards.");},
+  ()=>{addMsg('simulation','agent',"Based on your current spend mix, the Miles+ card is your best bet — but if you increase dining, the Prestige card might pull ahead. Try moving the sliders!");},
+  ()=>{addMsg('simulation','user','What if I travel more next year?');},
+  ()=>{addMsg('simulation','agent',"If you bump travel to $8,000+, the Prestige card becomes the clear winner — you'd earn over $1,100 in rewards. Plus you'd get complimentary hotel status and airport transfers. 🏨\n\nWant me to show you a comparison?");makeChips('simulation',['Yes, compare cards','Apply for Prestige','Keep Miles+']);},
+];
+let simCur=0;
+function stepSim(d){simCur=Math.max(0,Math.min(simSteps.length-1,simCur+d));if(d>0)simSteps[simCur]();else{resetSim();for(let i=0;i<=simCur;i++)simSteps[i]();}updateControls('sim-prev','sim-next','sim-counter',simCur,simSteps.length);}
+function resetSim(){document.getElementById('feed-simulation').innerHTML='';simCur=0;updateControls('sim-prev','sim-next','sim-counter',0,simSteps.length);}
+simSteps[0](); updateControls('sim-prev','sim-next','sim-counter',0,simSteps.length);
+
+// ══════════════════════════════════════════
+// TAB 4 — CREDIT BUILDER
+// ══════════════════════════════════════════
+const blSteps=[
+  ()=>{addTime('builder','Today, 2:20 PM');addMsg('builder','user','I applied for the PayPal Miles+ card but got declined. Can you help me understand why and what I can do?');},
+  ()=>{addMsg('builder','agent',"Hi Priya! I completely understand — being declined is frustrating, especially when you had your heart set on a card. 💙\n\nHere's what happened:");const r=makeCard('rose','<div><div class="ch-title">📋 Decision: Not approved — yet</div><div class="ch-sub">Miles+ requires 680+ · Your score: 648</div></div>',[['Your CIBIL score','648 (Fair)',''],['Miles+ threshold','680+',''],['Gap to close','32 points',''],['Estimated timeline','~3 months','mint']],null);addMsg('builder','agent',r);},
+  ()=>{addMsg('builder','agent',"The good news? 32 points is very achievable. I want to help you get there. Want me to set you up on a credit building path that gets you to Miles+ eligibility in about 3 months?");makeChips('builder',['Yes, let\'s do it!','What would I need to do?','Are there other options?']);},
+  ()=>{addMsg('builder','user','Yes let\'s do it! What do I need to do?');},
+  ()=>{addMsg('builder','agent',"Here's your personalised plan — I'll monitor your score monthly and notify you the moment you hit 680:");const r=makeCard('blue','<div><div class="ch-title">📈 Your 3-Step Credit Path</div><div class="ch-sub">Agent-monitored · Auto-notify at milestones</div></div>',[['Step 1','Secured card (apply now)',''],['Step 2','Pay on time every month','mint'],['Step 3','At 680: Auto-upgrade offer','gold']],[{label:'Apply for Secured Card',cls:'primary'},{label:'Tell me more',cls:'secondary'}]);addMsg('builder','agent',r);},
+  ()=>{addMsg('builder','user','Apply for the secured card');makeAuth('builder');},
+  ()=>{makeApproved('builder','Secured Card Approved!','₹5,000 deposit · Reported to CIBIL monthly',[['Deposit required','₹5,000'],['Credit limit','₹5,000'],['Annual fee','₹0'],['CIBIL reporting','Monthly ✓']]);addMsg('builder','agent','Your secured card is active! Every on-time payment is reported to CIBIL and builds your score. I\'ll send you a monthly score update and alert you the moment you hit 680. 🚀');makeChips('builder',['Set up auto-pay','See my score tracker','Got it, thanks!']);},
+  ()=>{addMsg('builder','agent','🔔 Score Alert (1 month later): Your score jumped to 659 — up 11 points! You\'re now 21 points from Miles+ eligibility. At this pace, you\'ll hit 680 in about 2 more months. Keep it up — you\'re doing great! 💪');},
+];
+let blCur=0;
+function stepBL(d){blCur=Math.max(0,Math.min(blSteps.length-1,blCur+d));if(d>0)blSteps[blCur]();else{resetBL();for(let i=0;i<=blCur;i++)blSteps[i]();}updateControls('bl-prev','bl-next','bl-counter',blCur,blSteps.length);}
+function resetBL(){document.getElementById('feed-builder').innerHTML='';blCur=0;updateControls('bl-prev','bl-next','bl-counter',0,blSteps.length);}
+blSteps[0](); updateControls('bl-prev','bl-next','bl-counter',0,blSteps.length);
+
+// ══════════════════════════════════════════
+// TAB 5 — SESSION CONTINUITY
+// ══════════════════════════════════════════
+const seSteps=[
+  ()=>{addTime('session','This morning on Telegram — 9:14 AM');const r=makeCard('blue','<div><div class="ch-title">📱 Session started on Telegram</div><div class="ch-sub">Arun · Intent: Miles+ card · 90% complete</div></div>',[['Intent captured','Travel card — Miles+',''],['Auth status','Verified ✓','mint'],['Pre-fill','19/20 fields done','mint'],['Missing','PAN last 4 digits','rose']],null);addMsg('session','agent',r);addMsg('session','agent',"You started applying for the Miles+ card this morning on Telegram but had to step away. Your session has been saved — you're 90% done!");},
+  ()=>{addTime('session','Now — 2:31 PM on Web Browser');addMsg('session','user','Hi, I\'m back. I was in the middle of an application — can I continue?');},
+  ()=>{addMsg('session','agent',"Welcome back, Arun! 👋 I've resumed your session from this morning. You were applying for the PayPal Miles+ card and everything is ready — I just need one more thing from you:");const r=makeCard('gold','<div><div class="ch-title">🔐 One field remaining</div><div class="ch-sub">19 of 20 pre-filled · 30 seconds to complete</div></div>',[['Status','90% complete','gold'],['Remaining','PAN last 4 digits only',''],['Pre-filled by PayPal','Name, address, income, DOB…','mint'],['Session valid until','11:14 PM tonight','']],[{label:'Complete Now',cls:'primary'},{label:'Start fresh',cls:'secondary'}]);addMsg('session','agent',r);},
+  ()=>{addMsg('session','user','Great — PAN last 4 is 7823');},
+  ()=>{addMsg('session','agent','Perfect! Submitting your application now…');makeApproved('session','Approved — Miles+ is yours! 🎉','Instant decision · Started on Telegram · Completed on Web',[['Credit limit','$22,000'],['APR','19.99%'],['Sign-up bonus','75K miles'],['Session time total','5h 17m']]);},
+  ()=>{addMsg('session','agent','Your card is ready in your PayPal wallet on all your devices. 📲 You can continue managing it on any channel — Telegram, WhatsApp, or web. Same thread, always in sync.');makeChips('session',['Add to Apple Pay','Check my limit','View rewards','Done for now']);},
+];
+let seCur=0;
+function stepSE(d){seCur=Math.max(0,Math.min(seSteps.length-1,seCur+d));if(d>0)seSteps[seCur]();else{resetSE();for(let i=0;i<=seCur;i++)seSteps[i]();}updateControls('se-prev','se-next','se-counter',seCur,seSteps.length);}
+function resetSE(){document.getElementById('feed-session').innerHTML='';seCur=0;updateControls('se-prev','se-next','se-counter',0,seSteps.length);}
+seSteps[0](); updateControls('se-prev','se-next','se-counter',0,seSteps.length);
+
+// ══════════════════════════════════════════
+// TAB 6 — COLLECTIONS
+// ══════════════════════════════════════════
+const coSteps=[
+  ()=>{
+    addTime('collections','Day 61 · Today, 10:05 AM · WhatsApp');
+    addMsg('collections','agent',"Hi Rahul. This is the PayPal Credit Agent reaching out about your Miles+ card.\n\nYour account is 61 days past due with a balance of $1,240. I want to help you resolve this — not pressure you. Can you spare 2 minutes to talk about your options?");
+    makeChips('collections',['Yes, show me options','I can\'t pay right now','I dispute this balance','Call me instead']);
+  },
+  ()=>{
+    addMsg('collections','user','I\'ve been going through a rough patch — lost my job last month. I genuinely can\'t pay the full amount right now.');
+    const r=makeCard('gold','<div><div class="ch-title">💛 Hardship flag detected</div><div class="ch-sub">Spend dropped 62% · Income signals changed · Special programmes unlocked</div></div>',[['Status','Financial hardship acknowledged',''],['Late fees','Waived immediately','mint'],['Interest freeze','Available for 90 days','mint'],['Credit reporting','Paused during hardship plan','mint']],null);
+    addMsg('collections','agent',r);
+    addMsg('collections','agent',"I'm really sorry to hear that, Rahul. Thank you for being upfront — it helps me find the right path for you.\n\nBecause you're experiencing genuine hardship, I've unlocked our financial assistance programme. Here's what I can offer:");
+  },
+  ()=>{
+    const r=makeCard('blue','<div><div class="ch-title">🤝 Three resolution paths</div><div class="ch-sub">Choose the one that works for your situation</div></div>',[['Option A','Pay $148 minimum today — freeze interest 90 days','mint'],['Option B','3-month instalment plan — $415/month · 0% interest','mint'],['Option C','Settle for $800 lump sum — 35% reduction','gold']],[{label:'Choose Option A',cls:'secondary'},{label:'Choose Option B',cls:'primary'},{label:'Choose Option C',cls:'secondary'}]);
+    addMsg('collections','agent',r);
+    addMsg('collections','agent','All three options stop any further late fees from accumulating today. Which works best for you?');
+    makeChips('collections',['Option A — minimum today','Option B — instalments','Option C — lump sum settlement','I need more time']);
+  },
+  ()=>{
+    addMsg('collections','user','Option B looks doable — $415 over 3 months. Can I start from next month?');
+  },
+  ()=>{
+    addMsg('collections','agent',"Absolutely. I can set the first instalment for May 1st — that gives you 3 weeks to stabilise. Here's the plan I'll set up:");
+    const r=makeCard('mint','<div><div class="ch-title">✅ Instalment Plan Confirmed</div><div class="ch-sub">Case #C-2024-00391 · No further late fees</div></div>',[['Payment 1','$415 · May 1','mint'],['Payment 2','$415 · Jun 1','mint'],['Payment 3','$410 · Jul 1','mint'],['Interest rate','0% during plan','mint'],['Credit reporting','Positive — plan enrolled','mint'],['Late fees','All waived','mint']],[{label:'Confirm Plan',cls:'primary'},{label:'Adjust dates',cls:'secondary'}]);
+    addMsg('collections','agent',r);
+  },
+  ()=>{
+    addMsg('collections','user','Confirmed. Thank you for being understanding about this.');
+  },
+  ()=>{
+    addMsg('collections','agent',"Plan is locked in. 🙏 You'll get a confirmation on WhatsApp and email.\n\nA few things to know:\n• I'll send a gentle reminder 3 days before each payment\n• If your situation improves and you want to pay early, reply 'Pay early' any time\n• If you hit another rough patch, reply 'I need help' and I'll reassess\n\nIs there anything else I can help with — like a referral to our financial wellness resources?");
+    makeChips('collections',['Yes, send resources','Set up auto-pay','All good, thank you']);
+  },
+  ()=>{
+    addMsg('collections','user','Please send the financial wellness resources');
+  },
+  ()=>{
+    const r=makeCard('teal','<div><div class="ch-title">📚 Financial Wellness Resources</div><div class="ch-sub">Curated for your situation</div></div>',[['Job search support','PayPal Gives — emergency relief fund',''],['Credit counselling','Free NFCC-certified counsellor referral',''],['Budget tool','PayPal Spend Planner — free in app',''],['Emergency fund','Guided savings goal — start with $10','']],null);
+    addMsg('collections','agent',r);
+    addMsg('collections','agent',"I've also paused all marketing messages on your account for 90 days — you'll only hear from us about your plan and account health. Take care of yourself, Rahul. We're rooting for you. 💙");
+  },
+];
+let coCur=0;
+function stepCO(d){coCur=Math.max(0,Math.min(coSteps.length-1,coCur+d));if(d>0)coSteps[coCur]();else{resetCO();for(let i=0;i<=coCur;i++)coSteps[i]();}updateControls('co-prev','co-next','co-counter',coCur,coSteps.length);}
+function resetCO(){document.getElementById('feed-collections').innerHTML='';coCur=0;updateControls('co-prev','co-next','co-counter',0,coSteps.length);}
+coSteps[0](); updateControls('co-prev','co-next','co-counter',0,coSteps.length);
+</script>
+</body>
+</html>

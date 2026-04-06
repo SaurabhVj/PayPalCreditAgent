@@ -1,0 +1,50 @@
+"""REST API endpoints for the Mini App."""
+
+from fastapi import APIRouter
+from bot.services.mock_data import (
+    MOCK_USER, MOCK_TRANSACTIONS, MOCK_BALANCE, MOCK_CARD, MOCK_REWARDS,
+)
+from bot.models.offers import CREDIT_OFFERS
+
+router = APIRouter()
+
+
+@router.get("/user")
+async def get_user():
+    return MOCK_USER
+
+
+@router.get("/offers")
+async def get_offers():
+    return CREDIT_OFFERS
+
+
+@router.get("/balance")
+async def get_balance():
+    return MOCK_BALANCE
+
+
+@router.get("/transactions")
+async def get_transactions():
+    return MOCK_TRANSACTIONS
+
+
+@router.get("/card")
+async def get_card():
+    return MOCK_CARD
+
+
+@router.get("/rewards")
+async def get_rewards():
+    return MOCK_REWARDS
+
+
+@router.post("/apply")
+async def apply(offer_index: int = 0):
+    offer = CREDIT_OFFERS[offer_index] if offer_index < len(CREDIT_OFFERS) else CREDIT_OFFERS[0]
+    return {
+        "status": "approved",
+        "product": offer["name"],
+        "limit": offer["amount"],
+        "decision_ms": 3100,
+    }

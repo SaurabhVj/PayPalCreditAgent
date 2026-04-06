@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic Credit — PayPal</title>
+<style>
+:root {
+  --white:#FFFFFF;--black:#000000;--blue:#60CDFF;--deep:#002991;
+  --g100:#F5F5F5;--g200:#EBEBEB;--g300:#CCCCCC;--g400:#999999;
+  --border:rgba(0,0,0,0.10);--dim:rgba(0,0,0,0.45);
+  /* PayPal Pro type stack (skill-compliant) */
+  --font:'PayPal Pro','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --mono:'Courier New',monospace;
+
+  /* PayPal type scale */
+  --t-display: clamp(2rem,4vw,4.8rem);
+  --t-heading: clamp(1.125rem,2vw,2rem);
+  --t-sub:     1.0625rem;
+  --t-body:    1rem;
+  --t-small:   0.9375rem;
+  --t-caption: 0.8125rem;
+  --t-label:   0.75rem;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--white);color:var(--black);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;font-size:var(--t-body)}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:62px;background:var(--white);border-bottom:1px solid var(--border);flex-shrink:0;gap:1rem}
+.tb-left{display:flex;align-items:center;gap:0.75rem}
+.pp-logo{display:flex;align-items:center;gap:0.45rem}
+.pp-logo svg{width:20px;height:20px}
+.pp-logo span{font-size:0.9rem;font-weight:900;letter-spacing:-0.02em}
+.sep{width:1px;height:16px;background:var(--border)}
+.tb-title{font-size:var(--t-body);font-weight:900;letter-spacing:-0.01em}
+.tb-sub{font-size:var(--t-small);font-weight:300;color:var(--dim)}
+.plat-row{display:flex;gap:2px}
+.pb{display:flex;align-items:center;gap:0.35rem;padding:0.4rem 0.875rem;font-size:var(--t-caption);font-weight:700;letter-spacing:0.04em;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.pb .pi{font-size:var(--t-body)}
+.pb:hover:not(.on){border-color:rgba(0,0,0,0.3);color:rgba(0,0,0,0.7)}
+.pb.on{background:var(--black);color:var(--white);border-color:var(--black)}
+.reset-btn{font-size:var(--t-caption);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.35rem 0.875rem;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all 0.15s}
+.reset-btn:hover{border-color:rgba(0,0,0,0.3);color:var(--black)}
+.menu-btn{font-size:var(--t-caption);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.35rem 0.875rem;border:1px solid var(--blue);background:rgba(96,205,255,0.08);color:var(--blue);cursor:pointer;transition:all 0.15s;margin-right:2px}
+.menu-btn:hover{background:var(--blue);color:var(--black)}
+
+/* ── MAIN ── */
+.main{display:grid;grid-template-columns:calc(50% - 3px) 6px calc(50% - 3px);flex:1;overflow:hidden;background:var(--white)}
+
+/* ── RESIZE DIVIDER ── */
+.divider{
+  background:var(--border);
+  cursor:col-resize;
+  position:relative;
+  z-index:20;
+  flex-shrink:0;
+  transition:background 0.2s;
+  display:flex;align-items:center;justify-content:center;
+  user-select:none;-webkit-user-select:none;
+}
+.divider:hover,.divider.dragging{background:rgba(96,205,255,0.35)}
+.divider::before{
+  content:'';
+  width:2px;height:32px;
+  border-radius:2px;
+  background:var(--g300);
+  transition:background 0.2s, height 0.2s;
+}
+.divider:hover::before,.divider.dragging::before{background:var(--blue);height:48px}
+
+/* ══════════════════════════════════════
+   LEFT PANE — Messaging app + step bar
+══════════════════════════════════════ */
+.left-pane{display:flex;flex-direction:column;overflow:hidden;position:relative}
+
+/* ── STEP PROGRESS BAR (top of left pane) ── */
+.step-bar{
+  display:flex;align-items:stretch;
+  flex-shrink:0;
+  position:relative;
+  z-index:5;
+  border-bottom:2px solid rgba(0,0,0,0.12);
+}
+/* skin-specific */
+.wa .step-bar{background:#1a2a33}
+.tg .step-bar{background:#17212b}
+.ig .step-bar{background:#111}
+.im .step-bar{background:#2c2c2e}
+.ms .step-bar{background:#1e1f20}
+
+.step-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:0.5rem 0.25rem;gap:0.25rem;
+  position:relative;cursor:default;
+  border-right:1px solid rgba(255,255,255,0.05);
+  transition:background 0.3s;
+}
+.step-item:last-child{border-right:none}
+.step-item.done{background:rgba(96,205,255,0.08)}
+.step-item.active{background:rgba(96,205,255,0.14)}
+
+/* bottom accent bar */
+.step-item::after{
+  content:'';
+  position:absolute;bottom:-2px;left:0;right:0;height:2px;
+  background:var(--blue);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform 0.5s cubic-bezier(0.22,1,0.36,1);
+}
+.step-item.done::after,.step-item.active::after{transform:scaleX(1)}
+
+.step-num{
+  width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--t-label);font-weight:700;
+  border:1px solid rgba(255,255,255,0.2);
+  color:rgba(255,255,255,0.3);
+  transition:all 0.3s;
+  flex-shrink:0;
+}
+.step-item.done .step-num{background:rgba(96,205,255,0.2);border-color:var(--blue);color:var(--blue)}
+.step-item.active .step-num{background:var(--blue);border-color:var(--blue);color:var(--black);animation:stepPulse 1.5s ease-in-out infinite}
+.step-lbl{
+  font-size:var(--t-label);font-weight:900;letter-spacing:0.05em;text-transform:uppercase;
+  color:rgba(255,255,255,0.25);text-align:center;line-height:1.3;
+  transition:color 0.3s;
+}
+.step-item.done .step-lbl{color:rgba(96,205,255,0.6)}
+.step-item.active .step-lbl{color:var(--blue)}
+
+/* ── STEP TRANSITION OVERLAY ── */
+.step-flash{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0.5rem;
+  z-index:20;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 0.2s;
+}
+.wa .step-flash{background:rgba(11,20,26,0.92)}
+.tg .step-flash{background:rgba(14,22,33,0.92)}
+.ig .step-flash{background:rgba(0,0,0,0.92)}
+.im .step-flash{background:rgba(28,28,30,0.92)}
+.ms .step-flash{background:rgba(28,28,30,0.92)}
+.step-flash.show{opacity:1;pointer-events:auto}
+.sf-icon{font-size:2.5rem;animation:sfBounce 0.5s cubic-bezier(0.22,1,0.36,1)}
+.sf-step{font-size:0.55rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--blue)}
+.sf-title{font-size:1.1rem;font-weight:900;letter-spacing:-0.02em;color:var(--white)}
+.sf-sub{font-size:var(--t-small);font-weight:300;color:rgba(255,255,255,0.45);text-align:center;max-width:22ch}
+
+/* ── MESSAGING SKINS ── */
+.skin-body{display:none;flex-direction:column;flex:1;overflow:hidden}
+.skin-body.on{display:flex}
+
+.wa{background:#0b141a}
+.wa .hd{background:#202c33;padding:0.5rem 0.875rem;display:flex;align-items:center;gap:0.625rem;flex-shrink:0}
+.wa .av{width:36px;height:36px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--t-small);color:#fff;flex-shrink:0}
+.wa .nm{font-size:var(--t-body);font-weight:600;color:#e9edef}
+.wa .st{font-size:var(--t-small);color:#8696a0}
+.wa .hicons{margin-left:auto;display:flex;gap:1rem;color:#aebac1;font-size:1rem}
+.wa .bg{flex:1;overflow-y:auto;padding:0.5rem 0.75rem;background:#0b141a;display:flex;flex-direction:column;gap:1px;scroll-behavior:smooth}
+.wa .out .bbl{background:#005c4b;color:#e9edef;border-radius:7px 0 7px 7px}
+.wa .inc .bbl{background:#202c33;color:#e9edef;border-radius:0 7px 7px 7px}
+.wa .dt span{background:#182b33;color:#8696a0;font-size:var(--t-caption);padding:0.175rem 0.5rem;border-radius:100px}
+.wa .inp{background:#202c33;padding:0.4rem 0.75rem;display:flex;align-items:center;gap:0.625rem;flex-shrink:0}
+.wa .ib{flex:1;background:#2a3942;border:none;border-radius:7px;padding:0.4rem 0.625rem;color:#d1d7db;font-size:var(--t-body);outline:none}
+.wa .mic{width:34px;height:34px;border-radius:50%;background:#00a884;border:none;color:#fff;font-size:var(--t-body);cursor:default;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.tg{background:#0e1621}
+.tg .hd{background:#17212b;padding:0.5rem 0.875rem;display:flex;align-items:center;gap:0.625rem;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.tg .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2b5fad,#4fa3e0);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--t-small);color:#fff;flex-shrink:0}
+.tg .nm{font-size:var(--t-body);font-weight:700;color:#fff}
+.tg .st{font-size:var(--t-small);color:#6c93a6}
+.tg .hicons{margin-left:auto;display:flex;gap:1rem;color:#6c93a6;font-size:1rem}
+.tg .bg{flex:1;overflow-y:auto;padding:0.5rem 0.75rem;background:#0e1621;display:flex;flex-direction:column;gap:1px;scroll-behavior:smooth}
+.tg .out .bbl{background:#2b5fad;color:#fff;border-radius:12px 12px 3px 12px}
+.tg .inc .bbl{background:#182533;color:#fff;border-radius:12px 12px 12px 3px}
+.tg .dt span{background:rgba(0,0,0,0.4);color:rgba(255,255,255,0.4);font-size:var(--t-caption);padding:0.15rem 0.5rem;border-radius:100px}
+.tg .inp{background:#17212b;padding:0.4rem 0.625rem;display:flex;align-items:center;gap:0.5rem;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.05)}
+.tg .ib{flex:1;background:#242f3d;border:none;border-radius:18px;padding:0.4rem 0.875rem;color:#fff;font-size:var(--t-body);outline:none}
+
+.ig{background:#000}
+.ig .hd{background:#000;padding:0.5rem 0.875rem;display:flex;align-items:center;gap:0.625rem;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.1)}
+.ig .av-ring{width:36px;height:36px;border-radius:50%;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ig .av-inner{width:30px;height:30px;border-radius:50%;background:#1c1c1e;display:flex;align-items:center;justify-content:center;font-size:var(--t-small);color:#fff}
+.ig .nm{font-size:var(--t-body);font-weight:700;color:#fff}
+.ig .st{font-size:var(--t-small);color:rgba(255,255,255,0.4)}
+.ig .hicons{margin-left:auto;display:flex;gap:1rem;color:rgba(255,255,255,0.8);font-size:1rem}
+.ig .bg{flex:1;overflow-y:auto;padding:0.5rem 0.875rem;background:#000;display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth}
+.ig .out .bbl{background:linear-gradient(135deg,#1877f2,#42a5f5);color:#fff;border-radius:18px 18px 3px 18px}
+.ig .inc .bbl{background:#262626;color:#fff;border-radius:18px 18px 18px 3px}
+.ig .dt span{color:rgba(255,255,255,0.3);font-size:var(--t-caption)}
+.ig .inp{background:#000;padding:0.4rem 0.75rem;display:flex;align-items:center;gap:0.625rem;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.1)}
+.ig .ib{flex:1;background:transparent;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:0.4rem 0.875rem;color:#fff;font-size:var(--t-body);outline:none}
+
+.im{background:#1c1c1e}
+.im .hd{background:rgba(28,28,30,0.95);backdrop-filter:blur(20px);padding:0.4rem 0.875rem;display:flex;flex-direction:column;align-items:center;gap:0.1rem;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.1);position:relative}
+.im .back-im{position:absolute;left:0.875rem;top:50%;transform:translateY(-50%);color:#0a84ff;font-size:var(--t-body)}
+.im .av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#636366,#3a3a3c);display:flex;align-items:center;justify-content:center;font-size:0.9rem}
+.im .nm{font-size:var(--t-small);font-weight:600;color:#fff}
+.im .bg{flex:1;overflow-y:auto;padding:0.5rem 0.875rem;background:#1c1c1e;display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth}
+.im .out .bbl{background:#0a84ff;color:#fff;border-radius:18px 18px 3px 18px}
+.im .inc .bbl{background:#3a3a3c;color:#fff;border-radius:18px 18px 18px 3px}
+.im .dt span{color:rgba(255,255,255,0.3);font-size:var(--t-caption)}
+.im .inp{background:#1c1c1e;padding:0.4rem 0.75rem;display:flex;align-items:center;gap:0.5rem;flex-shrink:0;border-top:1px solid rgba(255,255,255,0.1)}
+.im .ib{flex:1;background:#2c2c2e;border:none;border-radius:16px;padding:0.4rem 0.75rem;color:#fff;font-size:var(--t-body);outline:none}
+.im .send-btn{width:28px;height:28px;border-radius:50%;background:#0a84ff;border:none;color:#fff;font-size:var(--t-small);cursor:default;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.ms{background:#1c1c1e}
+.ms .hd{background:#242526;padding:0.5rem 0.875rem;display:flex;align-items:center;gap:0.625rem;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.08)}
+.ms .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0099ff,#a033ff);display:flex;align-items:center;justify-content:center;font-size:var(--t-body);flex-shrink:0}
+.ms .nm{font-size:var(--t-body);font-weight:700;color:#fff}
+.ms .st{font-size:var(--t-small);color:rgba(255,255,255,0.4)}
+.ms .hicons{margin-left:auto;display:flex;gap:0.5rem}
+.ms .hib{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:var(--t-body);cursor:default}
+.ms .bg{flex:1;overflow-y:auto;padding:0.5rem 0.875rem;background:#1c1c1e;display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth}
+.ms .out .bbl{background:linear-gradient(135deg,#0099ff,#a033ff);color:#fff;border-radius:18px 18px 3px 18px}
+.ms .inc .bbl{background:#3a3b3c;color:#fff;border-radius:18px 18px 18px 3px}
+.ms .dt span{color:rgba(255,255,255,0.3);font-size:var(--t-caption)}
+.ms .inp{background:#242526;padding:0.4rem 0.75rem;display:flex;align-items:center;gap:0.5rem;flex-shrink:0}
+.ms .ib{flex:1;background:#3a3b3c;border:none;border-radius:18px;padding:0.4rem 0.875rem;color:#fff;font-size:var(--t-body);outline:none}
+
+/* Shared chat */
+.bg::-webkit-scrollbar{width:3px}
+.bg::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1)}
+.row{display:flex;margin-bottom:2px;opacity:0;transform:translateY(6px);transition:opacity 0.28s ease,transform 0.28s ease}
+.row.show{opacity:1;transform:translateY(0)}
+.out{justify-content:flex-end}
+.inc{justify-content:flex-start}
+.bbl{padding:0.5rem 0.75rem;font-size:var(--t-body);font-weight:300;line-height:1.5;word-break:break-word;max-width:80%}
+.bbl-wide{max-width:90%}
+.ts{font-size:0.575rem;color:rgba(255,255,255,0.3);margin-top:2px;display:flex;align-items:center;justify-content:flex-end;gap:3px}
+.ticks{color:#53bdeb}
+.dt{text-align:center;margin:0.4rem 0}
+.typing-row{opacity:1;transform:none}
+.tbbl{display:flex;align-items:center;gap:4px;padding:0.45rem 0.625rem}
+.td{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.35);animation:tda 1.3s infinite}
+.td:nth-child(2){animation-delay:.2s}
+.td:nth-child(3){animation-delay:.4s}
+
+/* ── CHAT CARDS ── */
+.auth-card{border-radius:10px;overflow:hidden;margin-top:3px;max-width:255px}
+.wa .auth-card{background:#111b21;border:1px solid rgba(255,255,255,0.1)}
+.tg .auth-card{background:#0d1828;border:1px solid rgba(255,255,255,0.1)}
+.ig .auth-card{background:#1a1a1a;border:1px solid rgba(255,255,255,0.15)}
+.im .auth-card{background:#2c2c2e;border:1px solid rgba(255,255,255,0.12)}
+.ms .auth-card{background:#2d2d2d;border:1px solid rgba(255,255,255,0.1)}
+.ac-hd{padding:0.625rem 0.875rem;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:0.45rem}
+.ac-hd svg{width:16px;height:16px;flex-shrink:0}
+.ac-hd span{font-size:var(--t-small);font-weight:900;color:#fff}
+.ac-body{padding:0.75rem 0.875rem}
+.ac-desc{font-size:var(--t-small);font-weight:300;color:rgba(255,255,255,0.5);line-height:1.5;margin-bottom:0.625rem}
+.ac-user{display:flex;align-items:center;gap:0.45rem;padding:0.45rem 0.5rem;border-radius:7px;background:rgba(255,255,255,0.05);margin-bottom:0.5rem}
+.ac-av{width:26px;height:26px;border-radius:50%;background:#60CDFF;display:flex;align-items:center;justify-content:center;font-size:var(--t-caption);font-weight:900;color:#000;flex-shrink:0}
+.ac-name{font-size:var(--t-small);font-weight:700;color:#fff;line-height:1.2}
+.ac-email{font-size:var(--t-caption);color:rgba(255,255,255,0.38)}
+.ac-btn{width:100%;padding:0.5rem;border:none;border-radius:5px;background:#60CDFF;color:#000;font-size:var(--t-caption);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;cursor:pointer;transition:opacity 0.15s,background 0.15s}
+.ac-btn:hover:not(:disabled){opacity:0.85}
+.ac-btn:disabled{opacity:0.5;cursor:default}
+.ac-btn.done{background:rgba(96,205,255,0.2);color:rgba(96,205,255,0.8)}
+
+.offers-wrap{display:flex;flex-direction:column;gap:5px;margin-top:3px;max-width:270px}
+.oc{border-radius:9px;padding:0.625rem 0.75rem;cursor:pointer;transition:all 0.15s;border:1px solid transparent}
+.wa .oc{background:#111b21;border-color:rgba(255,255,255,0.1)}
+.tg .oc{background:#0d1828;border-color:rgba(255,255,255,0.1)}
+.ig .oc{background:#1a1a1a;border-color:rgba(255,255,255,0.15)}
+.im .oc{background:#2c2c2e;border-color:rgba(255,255,255,0.12)}
+.ms .oc{background:#2d2d2d;border-color:rgba(255,255,255,0.1)}
+.oc:hover{border-color:rgba(96,205,255,0.45)!important;background:rgba(96,205,255,0.05)!important}
+.oc.picked{border-color:#60CDFF!important;background:rgba(96,205,255,0.07)!important}
+.oc.disabled{pointer-events:none;opacity:0.5}
+.oc-tag{font-size:var(--t-label);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#60CDFF;margin-bottom:3px}
+.oc-name{font-size:var(--t-small);font-weight:900;color:#fff;margin-bottom:1px}
+.oc-amt{font-size:1.0625rem;font-weight:900;letter-spacing:-0.02em;color:#60CDFF;line-height:1.1}
+.oc-detail{font-size:0.5875rem;color:rgba(255,255,255,0.4);margin-top:2px;line-height:1.4}
+.oc-arrow{float:right;color:rgba(96,205,255,0.6);font-size:var(--t-body);margin-top:2px}
+
+.confirm-card{border-radius:10px;overflow:hidden;margin-top:3px;max-width:255px;border:1px solid rgba(96,205,255,0.4)}
+.wa .confirm-card{background:#111b21}
+.tg .confirm-card{background:#0d1828}
+.ig .confirm-card{background:#1a1a1a}
+.im .confirm-card{background:#2c2c2e}
+.ms .confirm-card{background:#2d2d2d}
+.cc-hd{padding:0.625rem 0.875rem;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:0.45rem}
+.cc-tick{width:26px;height:26px;border-radius:50%;background:#60CDFF;display:flex;align-items:center;justify-content:center;font-size:var(--t-caption);font-weight:900;color:#000;flex-shrink:0}
+.cc-title{font-size:var(--t-small);font-weight:900;color:#fff}
+.cc-rows{padding:0.625rem 0.875rem;display:flex;flex-direction:column;gap:4px}
+.cc-row{display:flex;justify-content:space-between;font-size:0.6375rem}
+.cc-row .l{color:rgba(255,255,255,0.4)}
+.cc-row .v{font-weight:700;color:#fff}
+.cc-row .v.hi{color:#60CDFF}
+.cc-submit{width:calc(100% - 1.75rem);margin:0 0.875rem 0.75rem;padding:0.5rem;border:none;border-radius:5px;background:#60CDFF;color:#000;font-size:var(--t-caption);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;cursor:pointer;transition:opacity 0.15s,background 0.15s}
+.cc-submit:hover:not(:disabled){opacity:0.85}
+.cc-submit.done{background:rgba(96,205,255,0.2);color:rgba(96,205,255,0.8)}
+.cc-submit:disabled{opacity:0.5;cursor:default}
+
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.chip{padding:0.3rem 0.75rem;border-radius:100px;font-size:var(--t-small);font-weight:700;cursor:pointer;transition:all 0.15s;border:1px solid rgba(96,205,255,0.5);color:#60CDFF;background:transparent}
+.chip:hover{background:#60CDFF;color:#000}
+.chip.used{opacity:0.4;pointer-events:none}
+
+/* Topic menu grid */
+.topic-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:240px}
+.topic-btn{
+  display:flex;flex-direction:column;gap:3px;
+  padding:0.625rem 0.75rem;border-radius:10px;cursor:pointer;
+  border:1px solid rgba(255,255,255,0.12);
+  transition:all 0.15s;
+}
+.wa .topic-btn{background:#182b33}
+.tg .topic-btn{background:#182533}
+.ig .topic-btn{background:#1a1a1a}
+.im .topic-btn{background:#2c2c2e}
+.ms .topic-btn{background:#2d2d2d}
+.topic-btn:hover{border-color:rgba(96,205,255,0.45)!important;background:rgba(96,205,255,0.08)!important}
+.tb-icon{font-size:1.25rem;line-height:1}
+.tb-lbl{font-size:var(--t-small);font-weight:900;color:#fff;line-height:1.2}
+.tb-sub{font-size:var(--t-caption);font-weight:300;color:rgba(255,255,255,0.38)}
+
+/* ══════════════════════════════════════
+   RIGHT PANE — Flow + Detail
+══════════════════════════════════════ */
+.engine-pane{
+  background:var(--white);
+  display:grid;
+  grid-template-rows:auto 1fr;
+  overflow:hidden;
+}
+
+/* ── Flow strip ── */
+.flow-strip{
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+  padding:0.875rem 1.5rem 0.75rem;
+  flex-shrink:0;
+}
+.flow-lbl{font-size:var(--t-label);font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--dim);margin-bottom:0.875rem}
+.flow-nodes{display:flex;align-items:center}
+.fn{display:flex;flex-direction:column;align-items:center;gap:0.3rem;flex:1}
+.fn-box{
+  width:54px;height:54px;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:1.05rem;
+  background:var(--g100);transition:border-color 0.3s,background 0.3s,transform 0.2s,box-shadow 0.3s;
+  position:relative;z-index:1;cursor:default;
+}
+.fn-box.clickable{cursor:pointer}
+.fn-box.clickable:hover{border-color:rgba(96,205,255,0.55)!important;background:rgba(96,205,255,0.08)!important;transform:translateY(-2px);box-shadow:0 4px 12px rgba(96,205,255,0.18)}
+.fn-box.on{border-color:var(--blue);background:rgba(96,205,255,0.1);animation:nodeGlow 1.8s ease-in-out infinite}
+.fn-box.ok{border-color:rgba(96,205,255,0.4);background:rgba(96,205,255,0.05)}
+.fn-box.sel{border-color:var(--blue)!important;background:rgba(96,205,255,0.12)!important;box-shadow:0 0 0 3px rgba(96,205,255,0.2);animation:none}
+.fn-lbl{font-size:var(--t-label);font-weight:900;letter-spacing:0.06em;text-transform:uppercase;color:var(--dim);text-align:center;line-height:1.3;transition:color 0.3s}
+.fn-lbl.on{color:var(--blue)}
+.fn-lbl.ok{color:rgba(0,0,0,0.55)}
+.fn-lbl.sel{color:var(--blue)}
+.fn-hint{font-size:var(--t-label);font-weight:300;color:var(--g300);text-align:center;margin-top:1px;opacity:0;transition:opacity 0.2s}
+.fn:hover .fn-hint{opacity:1}
+.fl{flex:0 0 auto;height:1px;background:var(--border);width:clamp(16px,3vw,52px);margin-bottom:1.9rem;position:relative;overflow:hidden}
+.fl-fill{position:absolute;top:0;left:0;height:100%;background:var(--blue);width:0%;transition:width 0.5s cubic-bezier(0.22,1,0.36,1)}
+.fl.lit .fl-fill{width:100%}
+
+/* ── Detail Panel ── */
+.detail-panel{display:flex;flex-direction:column;overflow:hidden;background:var(--white)}
+.detail-hd{display:flex;align-items:center;gap:0.75rem;padding:0.6rem 1rem;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--white);min-height:40px}
+.detail-node-info{display:flex;align-items:center;gap:0.5rem;flex:1;min-width:0}
+.detail-icon{font-size:1rem;flex-shrink:0}
+.detail-name{font-size:var(--t-sub);font-weight:900;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-badge{font-size:var(--t-label);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.18rem 0.5rem;border:1px solid var(--border);color:var(--dim);flex-shrink:0}
+.detail-badge.on{border-color:var(--blue);color:var(--blue)}
+.detail-badge.ok{border-color:rgba(96,205,255,0.4);color:rgba(0,100,180,0.9);background:rgba(96,205,255,0.07)}
+.detail-tabs{display:flex;gap:2px;flex-shrink:0}
+.dtab{font-size:var(--t-label);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.25rem 0.625rem;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all 0.15s}
+.dtab:hover:not(.on){border-color:rgba(0,0,0,0.25);color:rgba(0,0,0,0.6)}
+.dtab.on{background:var(--black);color:var(--white);border-color:var(--black)}
+.detail-hint{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.75rem;padding:2rem;text-align:center}
+.hint-icon{font-size:2rem;opacity:0.1}
+.hint-title{font-size:var(--t-small);font-weight:900;letter-spacing:-0.01em;color:rgba(0,0,0,0.18)}
+.hint-sub{font-size:var(--t-small);font-weight:300;color:rgba(0,0,0,0.16);max-width:28ch;line-height:1.6}
+.detail-code{flex:1;overflow-y:auto;padding:0.875rem 1rem;font-family:var(--mono);font-size:var(--t-small);line-height:1.75;color:#1a1a1a;background:var(--g100)}
+.detail-code::-webkit-scrollbar{width:3px}
+.detail-code::-webkit-scrollbar-thumb{background:var(--g300)}
+.cl{opacity:0;transform:translateX(-2px);transition:opacity 0.14s,transform 0.14s}
+.cl.s{opacity:1;transform:translateX(0)}
+.ck{color:#c0006c}.cs{color:#0055bb}.cn{color:#7c3aed}.cy{color:#8a6800}.cc{color:rgba(0,0,0,0.28)}.cg{color:#006600}
+.detail-offers{flex:1;overflow-y:auto;padding:0.875rem 1rem;display:flex;flex-direction:column;gap:0.625rem;background:var(--g100)}
+.detail-offers::-webkit-scrollbar{width:3px}
+.detail-offers::-webkit-scrollbar-thumb{background:var(--g300)}
+.do-card{border:1px solid var(--border);padding:0.75rem;background:var(--white);transition:border-color 0.15s}
+.do-card.hl{border-color:rgba(96,205,255,0.4);background:rgba(96,205,255,0.03)}
+.do-card.sel-offer{outline:1.5px solid rgba(96,205,255,0.7)}
+.do-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.do-name{font-size:var(--t-small);font-weight:900;letter-spacing:-0.01em}
+.do-score{font-size:var(--t-label);font-weight:700;letter-spacing:0.08em;padding:0.15rem 0.4rem;background:rgba(96,205,255,0.1);color:var(--blue)}
+.do-amt{font-size:1.375rem;font-weight:900;letter-spacing:-0.02em;color:var(--blue)}
+.do-meta{font-size:0.575rem;color:var(--dim);margin-top:2px;line-height:1.4}
+.do-bar{height:2px;background:var(--g200);margin-top:0.5rem;overflow:hidden}
+.do-fill{height:100%;background:var(--blue);transition:width 0.7s cubic-bezier(0.22,1,0.36,1)}
+
+/* ── ANIMATIONS ── */
+@keyframes tda{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-4px);opacity:.9}}
+@keyframes stepPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(96,205,255,0.4)}50%{transform:scale(1.08);box-shadow:0 0 0 4px rgba(96,205,255,0.15)}}
+@keyframes nodeGlow{0%,100%{box-shadow:0 0 0 0 rgba(96,205,255,0.3)}50%{box-shadow:0 0 0 5px rgba(96,205,255,0.12)}}
+@keyframes sfBounce{0%{transform:scale(0.5);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+
+/* ═══════════════════════════════════════
+   MOCK SCREENS — slide up over chat
+═══════════════════════════════════════ */
+.mock-screen{position:absolute;inset:0;z-index:50;transform:translateY(100%);transition:transform 0.38s cubic-bezier(0.22,1,0.36,1);display:flex;flex-direction:column;overflow:hidden}
+.wa .mock-screen{background:#0b141a}
+.tg .mock-screen{background:#0e1621}
+.ig .mock-screen{background:#000}
+.im .mock-screen{background:#1c1c1e}
+.ms .mock-screen{background:#1c1c1e}
+.mock-screen.open{transform:translateY(0)}
+
+/* Screen chrome */
+.sc-hd{display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sc-back{font-size:var(--t-body);font-weight:700;color:#60CDFF;cursor:pointer;display:flex;align-items:center;gap:0.2rem;flex-shrink:0}
+.sc-back:hover{opacity:0.75}
+.sc-title{font-size:var(--t-sub);font-weight:900;letter-spacing:-0.02em;color:#fff;flex:1}
+.sc-sub{font-size:var(--t-caption);font-weight:300;color:rgba(255,255,255,0.32)}
+.sc-body{flex:1;overflow-y:auto;padding:1rem}
+.sc-body::-webkit-scrollbar{width:3px}
+.sc-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1)}
+
+/* ── STATEMENT ── */
+.stmt-card{border-radius:12px;padding:1.125rem;margin-bottom:1rem;background:linear-gradient(135deg,#002991,#005bbb);position:relative;overflow:hidden}
+.stmt-card::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(96,205,255,0.1)}
+.stmt-card::after{content:'';position:absolute;bottom:-20px;left:20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.05)}
+.sc-lbl{font-size:var(--t-label);font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.sc-amt{font-size:2rem;font-weight:900;letter-spacing:-0.03em;color:#fff;margin-bottom:0.875rem;position:relative;z-index:1}
+.sc-meta-row{display:flex;gap:1rem;position:relative;z-index:1}
+.sc-meta-item .ml{font-size:var(--t-label);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.45)}
+.sc-meta-item .mv{font-size:var(--t-body);font-weight:700;color:#fff;margin-top:2px}
+.sc-meta-item .mv.hi{color:#60CDFF}
+.stmt-pay-btn{width:100%;padding:0.75rem;border:none;border-radius:8px;background:#60CDFF;color:#000;font-size:var(--t-small);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;margin-top:1rem;transition:opacity 0.15s}
+.stmt-pay-btn:hover{opacity:0.85}
+.stmt-sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.625rem}
+.stmt-sec-title{font-size:var(--t-small);font-weight:900;color:rgba(255,255,255,0.65)}
+.stmt-filter{font-size:var(--t-caption);color:#60CDFF;cursor:pointer}
+.txn-list{display:flex;flex-direction:column;gap:1px}
+.txn{display:flex;align-items:center;gap:0.625rem;padding:0.5rem 0.5rem;border-radius:8px;transition:background 0.12s;cursor:default}
+.txn:hover{background:rgba(255,255,255,0.04)}
+.txn-ic{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--t-body);flex-shrink:0}
+.txn-info{flex:1;min-width:0}
+.txn-name{font-size:var(--t-small);font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.txn-cat{font-size:var(--t-caption);font-weight:300;color:rgba(255,255,255,0.35);margin-top:1px}
+.txn-right{text-align:right;flex-shrink:0}
+.txn-amt{font-size:var(--t-small);font-weight:700;color:#fff}
+.txn-amt.cr{color:#60CDFF}
+.txn-date{font-size:var(--t-label);font-weight:300;color:rgba(255,255,255,0.32);margin-top:1px}
+
+/* ── MANAGE CARD ── */
+.vcard{border-radius:14px;padding:1.125rem 1.25rem;margin-bottom:1rem;background:linear-gradient(135deg,#1a1a2e,#002991,#0a0a1a);position:relative;overflow:hidden;height:128px;display:flex;flex-direction:column;justify-content:space-between}
+.vc-shine{position:absolute;top:-40px;right:-20px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(96,205,255,0.12) 0%,transparent 70%)}
+.vc-top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
+.vc-pp{display:flex;align-items:center;gap:0.35rem}
+.vc-pp svg{width:16px;height:16px}
+.vc-pp span{font-size:var(--t-small);font-weight:900;color:#fff}
+.vc-type{font-size:var(--t-label);font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.38)}
+.vc-num{display:flex;align-items:center;gap:6px;position:relative;z-index:1}
+.vc-dots{font-size:1rem;color:rgba(255,255,255,0.45);letter-spacing:4px;line-height:1}
+.vc-last4{font-size:var(--t-body);font-weight:900;color:#fff;letter-spacing:2px}
+.vc-bot{display:flex;align-items:flex-end;justify-content:space-between;position:relative;z-index:1}
+.vc-holder{font-size:var(--t-caption);font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:0.05em}
+.vc-exp .el{font-size:var(--t-label);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4)}
+.vc-exp .ev{font-size:var(--t-small);font-weight:700;color:#fff}
+
+.csr-row{display:flex;gap:0.5rem;margin-bottom:1rem}
+.csr{flex:1;padding:0.5rem 0.25rem;border-radius:8px;text-align:center;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all 0.15s}
+.csr:hover{background:rgba(96,205,255,0.08);border-color:rgba(96,205,255,0.3)}
+.csr .ci{font-size:1rem;display:block;margin-bottom:3px}
+.csr .cl{font-size:var(--t-label);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.35)}
+
+.mc-sec{margin-bottom:0.875rem}
+.mc-sec-hd{font-size:var(--t-label);font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.28);margin-bottom:0.375rem;padding:0 0.25rem}
+
+.trow{display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.5rem;border-radius:8px;transition:background 0.12s}
+.trow:hover{background:rgba(255,255,255,0.04)}
+.trow-left{display:flex;align-items:center;gap:0.5rem}
+.trow-ic{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:var(--t-body);flex-shrink:0}
+.trow-name{font-size:var(--t-small);font-weight:700;color:#fff}
+.trow-sub{font-size:var(--t-caption);font-weight:300;color:rgba(255,255,255,0.35);margin-top:1px}
+.tog{width:34px;height:19px;border-radius:10px;position:relative;cursor:pointer;transition:background 0.25s;flex-shrink:0}
+.tog.on{background:#60CDFF}
+.tog.off{background:rgba(255,255,255,0.15)}
+.tog-k{position:absolute;top:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:left 0.22s cubic-bezier(0.22,1,0.36,1);box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.tog.on .tog-k{left:17px}
+.tog.off .tog-k{left:2px}
+
+.limit-wrap{padding:0.75rem;border-radius:8px;background:rgba(255,255,255,0.04);margin-bottom:0.375rem}
+.lw-top{display:flex;justify-content:space-between;margin-bottom:0.5rem}
+.lw-label{font-size:var(--t-small);font-weight:700;color:rgba(255,255,255,0.55)}
+.lw-val{font-size:var(--t-small);font-weight:900;color:#60CDFF}
+.lw-bar{height:4px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-bottom:0.375rem}
+.lw-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#60CDFF,#008CFF)}
+.lw-sub{display:flex;justify-content:space-between;font-size:var(--t-label);font-weight:300;color:rgba(255,255,255,0.28)}
+
+.det-row{display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.5rem;border-radius:8px}
+.det-row:hover{background:rgba(255,255,255,0.04)}
+.det-lbl{font-size:var(--t-small);font-weight:300;color:rgba(255,255,255,0.42)}
+.det-val{font-size:var(--t-small);font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:0.04em}
+.det-show{font-size:var(--t-caption);font-weight:700;color:#60CDFF;cursor:pointer;margin-left:0.5rem}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="pp-logo">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M19.5 6.5C19.5 9.54 17.04 12 14 12H9.5L8 19H4.5L7 6.5H14Z" fill="#60CDFF"/><path d="M20 4C20 7.04 17.54 9.5 14.5 9.5H10L8.5 16.5H5L7.5 4H14.5Z" fill="black" opacity="0.15"/></svg>
+      <span>PayPal</span>
+    </div>
+    <div class="sep"></div>
+    <span class="tb-title">Agentic Credit</span>
+    <span class="tb-sub">Conversational Commerce Flow</span>
+  </div>
+  <div class="plat-row">
+    <button class="pb on" onclick="setPlatform('wa')"><span class="pi">💬</span>WhatsApp</button>
+    <button class="pb" onclick="setPlatform('tg')"><span class="pi">✈️</span>Telegram</button>
+    <button class="pb" onclick="setPlatform('ig')"><span class="pi">📸</span>Instagram</button>
+    <button class="pb" onclick="setPlatform('im')"><span class="pi">💙</span>iMessage</button>
+    <button class="pb" onclick="setPlatform('ms')"><span class="pi">⚡</span>Messenger</button>
+  </div>
+  <button class="menu-btn" onclick="showMenu()">☰ Menu</button>
+  <button class="reset-btn" onclick="reset()">↺ Reset</button>
+</div>
+
+<div class="main" id="main-grid">
+
+  <!-- LEFT PANE -->
+  <div class="left-pane" id="left-pane">
+
+    <!-- WhatsApp -->
+    <div class="skin-body wa on" id="skin-wa">
+      <div class="hd"><span style="color:#aebac1">‹</span>&nbsp;<div class="av">P</div><div><div class="nm">PayPal</div><div class="st">online</div></div><div class="hicons"><span>🔍</span><span>⋮</span></div></div>
+      <!-- Step bar -->
+      <div class="step-bar" id="steps-wa"></div>
+      <div class="bg" id="bg-wa"><div class="dt"><span>Today</span></div></div>
+      <div class="inp"><span style="color:#8696a0;font-size:1rem">😊</span><input class="ib" id="ib-wa" placeholder="Ask me anything…" onkeydown="onKey(event,'wa')"><span style="color:#8696a0;font-size:1rem">📎</span><button class="mic" onclick="doSend('wa')">➤</button></div>
+      <div class="step-flash" id="flash-wa"></div>
+    </div>
+
+    <!-- Telegram -->
+    <div class="skin-body tg" id="skin-tg">
+      <div class="hd"><span style="color:#6c93a6">‹</span>&nbsp;<div class="av">P</div><div><div class="nm">PayPal Bot</div><div class="st">bot</div></div><div class="hicons"><span>🔍</span><span>⋮</span></div></div>
+      <div class="step-bar" id="steps-tg"></div>
+      <div class="bg" id="bg-tg"><div class="dt"><span>Today</span></div></div>
+      <div class="inp"><span style="color:#6c93a6;font-size:1rem">😊</span><input class="ib" id="ib-tg" placeholder="Ask me anything…" onkeydown="onKey(event,'tg')"><span style="color:#6c93a6;font-size:1rem" style="cursor:pointer" onclick="doSend('tg')">➤</span></div>
+      <div class="step-flash" id="flash-tg"></div>
+    </div>
+
+    <!-- Instagram -->
+    <div class="skin-body ig" id="skin-ig">
+      <div class="hd"><span style="color:rgba(255,255,255,0.7)">‹</span>&nbsp;<div class="av-ring"><div class="av-inner">P</div></div><div><div class="nm">paypal</div><div class="st">Active now</div></div><div class="hicons"><span>📞</span><span>📹</span></div></div>
+      <div class="step-bar" id="steps-ig"></div>
+      <div class="bg" id="bg-ig"><div class="dt"><span>Today</span></div></div>
+      <div class="inp"><span style="color:rgba(255,255,255,0.6)">📷</span><input class="ib" id="ib-ig" placeholder="Ask me anything…" onkeydown="onKey(event,'ig')"><span style="color:#60CDFF;cursor:pointer;font-size:1rem" onclick="doSend('ig')">➤</span></div>
+      <div class="step-flash" id="flash-ig"></div>
+    </div>
+
+    <!-- iMessage -->
+    <div class="skin-body im" id="skin-im">
+      <div class="hd"><span class="back-im">‹</span><div class="av">P</div><div class="nm">PayPal</div></div>
+      <div class="step-bar" id="steps-im"></div>
+      <div class="bg" id="bg-im"><div class="dt"><span>10:42 AM</span></div></div>
+      <div class="inp"><span style="color:#0a84ff;font-size:1.1rem">+</span><input class="ib" id="ib-im" placeholder="Ask me anything…" onkeydown="onKey(event,'im')"><button class="send-btn" onclick="doSend('im')">↑</button></div>
+      <div class="step-flash" id="flash-im"></div>
+    </div>
+
+    <!-- Messenger -->
+    <div class="skin-body ms" id="skin-ms">
+      <div class="hd"><span style="color:rgba(255,255,255,0.6)">‹</span>&nbsp;<div class="av">P</div><div><div class="nm">PayPal</div><div class="st">Active now</div></div><div class="hicons"><div class="hib">📞</div><div class="hib">📹</div></div></div>
+      <div class="step-bar" id="steps-ms"></div>
+      <div class="bg" id="bg-ms"><div class="dt"><span>Today</span></div></div>
+      <div class="inp"><span style="color:rgba(255,255,255,0.5)">➕</span><input class="ib" id="ib-ms" placeholder="Ask me anything…" onkeydown="onKey(event,'ms')"><span style="color:#0099ff;cursor:pointer;font-size:1.1rem" onclick="doSend('ms')">➤</span></div>
+      <div class="step-flash" id="flash-ms"></div>
+    </div>
+
+  </div>
+
+  <!-- RESIZE DIVIDER -->
+  <div class="divider" id="divider"></div>
+
+  <!-- ENGINE PANE -->
+  <div class="engine-pane">
+    <div class="flow-strip">
+      <div class="flow-lbl">Live Architecture — click any active node to inspect</div>
+      <div class="flow-nodes">
+        <div class="fn"><div class="fn-box" id="fn0" onclick="selectNode(0)">💬</div><div class="fn-lbl" id="fl0">Messaging<br>Platform</div><div class="fn-hint">inspect</div></div>
+        <div class="fl" id="fa0"><div class="fl-fill"></div></div>
+        <div class="fn"><div class="fn-box" id="fn1" onclick="selectNode(1)">🔗</div><div class="fn-lbl" id="fl1">PayPal<br>Connector</div><div class="fn-hint">inspect</div></div>
+        <div class="fl" id="fa1"><div class="fl-fill"></div></div>
+        <div class="fn"><div class="fn-box" id="fn2" onclick="selectNode(2)">🔐</div><div class="fn-lbl" id="fl2">OAuth<br>Auth</div><div class="fn-hint">inspect</div></div>
+        <div class="fl" id="fa2"><div class="fl-fill"></div></div>
+        <div class="fn"><div class="fn-box" id="fn3" onclick="selectNode(3)">🧠</div><div class="fn-lbl" id="fl3">NBA<br>Model</div><div class="fn-hint">inspect</div></div>
+        <div class="fl" id="fa3"><div class="fl-fill"></div></div>
+        <div class="fn"><div class="fn-box" id="fn4" onclick="selectNode(4)">✅</div><div class="fn-lbl" id="fl4">Credit<br>Decision</div><div class="fn-hint">inspect</div></div>
+      </div>
+    </div>
+    <div class="detail-panel">
+      <div class="detail-hd">
+        <div class="detail-node-info"><span class="detail-icon" id="d-icon">◈</span><span class="detail-name" id="d-name">Click a node above to inspect</span></div>
+        <div class="detail-tabs" id="d-tabs" style="display:none">
+          <button class="dtab on" id="tab-req" onclick="switchTab('req')">Request</button>
+          <button class="dtab" id="tab-res" onclick="switchTab('res')">Response</button>
+        </div>
+        <div class="detail-badge" id="d-badge" style="display:none"></div>
+      </div>
+      <div class="detail-hint" id="detail-hint"><div class="hint-icon">◈</div><div class="hint-title">Nothing selected</div><div class="hint-sub">Click any active node in the flow above to inspect its request and response payload.</div></div>
+      <div class="detail-code" id="detail-code" style="display:none"></div>
+      <div class="detail-offers" id="detail-offers" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────
+let plat = 'wa';
+let busy = false;
+let chosenOffer = null;
+let flowState = 'idle';
+let selectedNode = null;
+let activeTab = 'req';
+let currentStep = 0; // 0-based, 0=not started
+
+const STEPS = [
+  { num:1, icon:'🔗', label:'Connect',    desc:'PayPal Connector',    sub:'Platform handshake' },
+  { num:2, icon:'🔐', label:'Auth',       desc:'OAuth 2.0 Login',     sub:'Identity verified'  },
+  { num:3, icon:'🧠', label:'NBA Model',  desc:'Scoring Profile',     sub:'Calling NBA Model'  },
+  { num:4, icon:'🎯', label:'Offers',     desc:'Credit Offers Ready', sub:'3 offers matched'   },
+  { num:5, icon:'✅', label:'Apply',      desc:'Application Done',    sub:'Approved in 3.1s'   },
+];
+
+const OFFERS = [
+  { tag:'Best Match', name:'PayPal Pay Later',          amt:'$2,500', score:96, detail:'0% APR · 6 months · No annual fee', hl:true  },
+  { tag:'Premium',    name:'PayPal Cashback Mastercard', amt:'$5,000', score:84, detail:'3% cashback on all PayPal purchases', hl:false },
+  { tag:'Starter',    name:'PayPal Credit Line',         amt:'$1,200', score:71, detail:'Build credit history · 19.99% APR',  hl:false },
+];
+
+const PLAT_MAP = {wa:{bg:'bg-wa',skin:'skin-wa',steps:'steps-wa',flash:'flash-wa'},tg:{bg:'bg-tg',skin:'skin-tg',steps:'steps-tg',flash:'flash-tg'},ig:{bg:'bg-ig',skin:'skin-ig',steps:'steps-ig',flash:'flash-ig'},im:{bg:'bg-im',skin:'skin-im',steps:'steps-im',flash:'flash-im'},ms:{bg:'bg-ms',skin:'skin-ms',steps:'steps-ms',flash:'flash-ms'}};
+
+const nodeData = {
+  0:{icon:'💬',name:'Messaging Platform',badge:'',badgeCls:'',req:null,res:null,type:'code'},
+  1:{icon:'🔗',name:'PayPal Connector',badge:'',badgeCls:'',req:null,res:null,type:'code'},
+  2:{icon:'🔐',name:'OAuth Auth',badge:'',badgeCls:'',req:null,res:null,type:'code'},
+  3:{icon:'🧠',name:'NBA Model',badge:'',badgeCls:'',req:null,res:null,type:'code'},
+  4:{icon:'✅',name:'Credit Decision',badge:'',badgeCls:'',req:null,res:'offers',type:'offers'},
+};
+
+// ── HELPERS ───────────────────────────────────
+const $ = id => document.getElementById(id);
+const bg = () => $(PLAT_MAP[plat].bg);
+const now = () => { const d=new Date(); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); };
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const rnd = (n=8) => Math.random().toString(36).substr(2,n);
+const scroll = () => { const el=bg(); if(el) el.scrollTop=99999; };
+const platLabel = () => ({wa:'WhatsApp',tg:'Telegram',ig:'Instagram',im:'iMessage',ms:'Messenger'}[plat]);
+
+// ── STEP BAR ──────────────────────────────────
+function buildStepBars() {
+  ['wa','tg','ig','im','ms'].forEach(p=>{
+    const el = $(PLAT_MAP[p].steps);
+    if(!el) return;
+    el.innerHTML = STEPS.map((s,i)=>`
+      <div class="step-item" id="si-${p}-${i}">
+        <div class="step-num" id="sn-${p}-${i}">${i<currentStep?'✓':s.num}</div>
+        <div class="step-lbl">${s.label}</div>
+      </div>`).join('');
+  });
+}
+
+function setStepActive(stepIdx) {
+  // stepIdx is 0-based (0 = step 1)
+  currentStep = stepIdx;
+  ['wa','tg','ig','im','ms'].forEach(p=>{
+    STEPS.forEach((_,i)=>{
+      const si=$(`si-${p}-${i}`);
+      const sn=$(`sn-${p}-${i}`);
+      if(!si)return;
+      si.classList.remove('active','done');
+      if(i<stepIdx){ si.classList.add('done'); if(sn)sn.textContent='✓'; }
+      else if(i===stepIdx){ si.classList.add('active'); if(sn)sn.textContent=STEPS[i].num; }
+    });
+  });
+}
+
+// ── STEP FLASH OVERLAY ────────────────────────
+async function showFlash(stepIdx) {
+  const s = STEPS[stepIdx];
+  const flashEl = $(PLAT_MAP[plat].flash);
+  if(!flashEl) return;
+  flashEl.innerHTML = `
+    <div class="sf-icon">${s.icon}</div>
+    <div class="sf-step">Step ${s.num} of ${STEPS.length}</div>
+    <div class="sf-title">${s.desc}</div>
+    <div class="sf-sub">${s.sub}</div>`;
+  flashEl.classList.add('show');
+  await sleep(1200);
+  flashEl.classList.remove('show');
+  await sleep(200);
+}
+
+// ── CHAT HELPERS ──────────────────────────────
+function makeRow(type) {
+  const el=document.createElement('div'); el.className=`row ${type}`; bg().appendChild(el); return el;
+}
+function addBubble(type,html,wide=false) {
+  return new Promise(r=>setTimeout(()=>{
+    const row=makeRow(type);
+    const bbl=document.createElement('div'); bbl.className=`bbl${wide?' bbl-wide':''}`;
+    bbl.innerHTML=html; row.appendChild(bbl);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.classList.add('show'); scroll(); }));
+    r(row);
+  },0));
+}
+function addTs(row,type) {
+  const ts=document.createElement('div'); ts.className='ts';
+  ts.innerHTML=type==='out'?`${now()} <span class="ticks">✓✓</span>`:now();
+  row.querySelector('.bbl').appendChild(ts);
+}
+async function showTyping() {
+  const row=makeRow('inc'); row.classList.add('typing-row'); row.id='typing';
+  const bbl=document.createElement('div'); bbl.className='bbl tbbl';
+  bbl.innerHTML='<div class="td"></div><div class="td"></div><div class="td"></div>';
+  row.appendChild(bbl); requestAnimationFrame(()=>requestAnimationFrame(()=>scroll())); return row;
+}
+function rmTyping() { const t=$('typing'); if(t)t.remove(); }
+
+// ── FLOW NODES ────────────────────────────────
+function nodeOn(i)   { $(`fn${i}`)?.classList.add('on','clickable');   $(`fl${i}`)?.classList.add('on'); }
+function nodeDone(i) { const b=$(`fn${i}`),l=$(`fl${i}`); b?.classList.remove('on'); b?.classList.add('ok','clickable'); l?.classList.remove('on'); l?.classList.add('ok'); }
+function lineOn(i)   { $(`fa${i}`)?.classList.add('lit'); }
+
+// ── NODE DATA + DETAIL ────────────────────────
+function storeReq(i,lines,badge='',cls='') {
+  nodeData[i].req=lines; nodeData[i].badge=badge; nodeData[i].badgeCls=cls;
+  if(selectedNode===i) renderDetail(i); else selectNode(i);
+}
+function storeRes(i,lines,badge='',cls='') {
+  nodeData[i].res=lines; if(badge){nodeData[i].badge=badge;nodeData[i].badgeCls=cls;}
+  if(selectedNode===i) renderDetail(i);
+}
+
+function selectNode(i) {
+  const nd=nodeData[i]; if(!nd.req&&nd.res!=='offers') return;
+  selectedNode=i; activeTab='req';
+  [0,1,2,3,4].forEach(j=>{ $(`fn${j}`)?.classList.remove('sel'); $(`fl${j}`)?.classList.remove('sel'); });
+  $(`fn${i}`)?.classList.add('sel'); $(`fl${i}`)?.classList.add('sel');
+  renderDetail(i);
+}
+
+function renderDetail(i) {
+  const nd=nodeData[i]; if(!nd)return;
+  $('detail-hint').style.display='none';
+  $('d-icon').textContent=nd.icon; $('d-name').textContent=nd.name;
+  const badge=$('d-badge'); badge.style.display=nd.badge?'block':'none'; badge.textContent=nd.badge; badge.className=`detail-badge ${nd.badgeCls}`;
+  const hasBoth=nd.req&&nd.res&&nd.res!=='offers';
+  const isOffers=nd.res==='offers';
+  const hasOffersDone=isOffers&&nd.req;
+  $('d-tabs').style.display=(hasBoth||hasOffersDone)?'flex':'none';
+  $('tab-req').textContent='Request'; $('tab-res').textContent=isOffers?'Offers':'Response';
+  if(!hasBoth&&!hasOffersDone) activeTab=nd.res&&nd.res!=='offers'?'res':'req';
+  $('tab-req')?.classList.toggle('on',activeTab==='req');
+  $('tab-res')?.classList.toggle('on',activeTab==='res');
+  const ce=$('detail-code'), oe=$('detail-offers');
+  if(activeTab==='res'&&isOffers) {
+    ce.style.display='none'; oe.style.display='flex'; oe.innerHTML='';
+    OFFERS.forEach((o,idx)=>{
+      const c=document.createElement('div'); c.className=`do-card${o.hl?' hl':''}${chosenOffer===idx?' sel-offer':''}`;
+      c.innerHTML=`<div class="do-top"><div class="do-name">${o.name}</div><div class="do-score">Score: ${o.score}</div></div><div class="do-amt">${o.amt}</div><div class="do-meta">${o.detail}</div><div class="do-bar"><div class="do-fill" style="width:${o.score}%"></div></div>`;
+      oe.appendChild(c);
+    });
+  } else {
+    oe.style.display='none'; ce.style.display='block';
+    const lines=activeTab==='req'?nd.req:nd.res;
+    if(!lines||lines==='offers'){ce.innerHTML='<div class="cl cc s" style="opacity:1">No data yet.</div>';return;}
+    ce.innerHTML='';
+    lines.forEach((l,idx)=>{
+      const d=document.createElement('div'); d.className='cl'; d.innerHTML=l;
+      ce.appendChild(d); setTimeout(()=>d.classList.add('s'),idx*35);
+    });
+  }
+}
+
+function switchTab(tab) {
+  activeTab=tab;
+  $('tab-req')?.classList.toggle('on',tab==='req');
+  $('tab-res')?.classList.toggle('on',tab==='res');
+  if(selectedNode!==null) renderDetail(selectedNode);
+}
+
+// ── CARD HTML ─────────────────────────────────
+function authCardHTML() {
+  return `<div class="auth-card">
+    <div class="ac-hd"><svg viewBox="0 0 24 24" fill="none"><path d="M19.5 6.5C19.5 9.54 17.04 12 14 12H9.5L8 19H4.5L7 6.5H14Z" fill="#60CDFF"/><path d="M20 4C20 7.04 17.54 9.5 14.5 9.5H10L8.5 16.5H5L7.5 4H14.5Z" fill="white" opacity="0.3"/></svg><span>Connect PayPal</span></div>
+    <div class="ac-body">
+      <div class="ac-desc">Sign in to unlock personalised credit offers.</div>
+      <div class="ac-user"><div class="ac-av">V</div><div><div class="ac-name">Vijay Ganesan</div><div class="ac-email">vijayg@paypal.com</div></div></div>
+      <button class="ac-btn" id="ac-btn" onclick="handleConnect()">🔐 Connect with PayPal</button>
+    </div>
+  </div>`;
+}
+function offersHTML() {
+  return `<div class="offers-wrap">${OFFERS.map((o,i)=>`
+    <div class="oc" id="oc${i}" onclick="handleOffer(${i})"><span class="oc-arrow">›</span>
+      <div class="oc-tag">${o.tag}</div><div class="oc-name">${o.name}</div>
+      <div class="oc-amt">${o.amt}</div><div class="oc-detail">${o.detail}</div>
+    </div>`).join('')}</div>`;
+}
+function confirmHTML(i) {
+  const o=OFFERS[i];
+  return `<div class="confirm-card">
+    <div class="cc-hd"><div class="cc-tick">✓</div><div class="cc-title">Application Ready</div></div>
+    <div class="cc-rows">
+      <div class="cc-row"><span class="l">Product</span><span class="v">${o.name}</span></div>
+      <div class="cc-row"><span class="l">Limit</span><span class="v">${o.amt}</span></div>
+      <div class="cc-row"><span class="l">Applicant</span><span class="v">Vijay Ganesan</span></div>
+      <div class="cc-row"><span class="l">Via</span><span class="v">${platLabel()}</span></div>
+      <div class="cc-row"><span class="l">Decision</span><span class="v hi">Instant · ~3s</span></div>
+    </div>
+    <button class="cc-submit" id="cc-btn" onclick="handleSubmit()">Submit Application →</button>
+  </div>`;
+}
+
+// ── FLOW ──────────────────────────────────────
+
+async function greet() {
+  if(flowState!=='idle')return;
+  flowState='menu'; busy=true;
+
+  nodeOn(0); nodeOn(1);
+  const sess=rnd();
+  storeReq(0,[
+    `<span class="cc"># Platform session — ${platLabel()}</span>`,
+    `<span class="cy">"platform"</span>: <span class="cs">"${platLabel()}"</span>,`,
+    `<span class="cy">"session_id"</span>: <span class="cs">"sess_${sess}"</span>,`,
+    `<span class="cy">"device"</span>: <span class="cs">"mobile"</span>`,
+  ],'ACTIVE','on');
+  storeRes(0,[`<span class="cy">"status"</span>: <span class="cg">"ready"</span>,`, `<span class="cy">"bot_id"</span>: <span class="cs">"paypal-assistant-v2"</span>`],'ACTIVE','on');
+  storeReq(1,[
+    `<span class="cc"># Connector init — ${platLabel()}</span>`,
+    `<span class="ck">POST</span> <span class="cs">/v1/connector/init</span>`,
+    `<span class="cy">"platform"</span>:    <span class="cs">"${platLabel()}"</span>,`,
+    `<span class="cy">"capabilities"</span>: [<span class="cs">"credit_offers"</span>, <span class="cs">"oauth_embed"</span>]`,
+  ],'ACTIVE','on');
+  storeRes(1,[`<span class="cy">"status"</span>: <span class="cg">"connected"</span>,`,`<span class="cy">"channel_id"</span>: <span class="cs">"ch_${rnd(8)}"</span>`],'CONNECTED','ok');
+
+  setStepActive(0);
+  let t=await showTyping(); await sleep(1100); rmTyping();
+  let r=await addBubble('inc',`👋 Hi Vijay Ganesan! I'm your PayPal assistant on ${platLabel()}.<br>What can I help you with today?`);
+  addTs(r,'inc');
+  await sleep(300);
+  showTopicMenu();
+  busy=false;
+}
+
+function showTopicMenu() {
+  const row=makeRow('inc');
+  const bbl=document.createElement('div'); bbl.className='bbl bbl-wide';
+  bbl.innerHTML=`<div class="topic-grid">
+    <div class="topic-btn" onclick="pickTopic('credit')"><span class="tb-icon">💳</span><span class="tb-lbl">Apply for Credit</span><span class="tb-sub">See personalised offers</span></div>
+    <div class="topic-btn" onclick="pickTopic('balance')"><span class="tb-icon">💰</span><span class="tb-lbl">Check Balance</span><span class="tb-sub">Balance, due date, limits</span></div>
+    <div class="topic-btn" onclick="pickTopic('rewards')"><span class="tb-icon">🎁</span><span class="tb-lbl">Rewards</span><span class="tb-sub">Cashback & points</span></div>
+    <div class="topic-btn" onclick="pickTopic('support')"><span class="tb-icon">🙋</span><span class="tb-lbl">Support</span><span class="tb-sub">Contact & help</span></div>
+  </div>`;
+  row.appendChild(bbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.classList.add('show'); scroll(); }));
+}
+
+async function pickTopic(topic) {
+  if(busy) return;
+  // Dim menu
+  document.querySelectorAll('.topic-btn').forEach(b=>{b.style.opacity='0.45';b.style.pointerEvents='none';});
+  if(topic==='credit')   await startCredit();
+  if(topic==='balance')  await startBalance();
+  if(topic==='rewards')  await startRewards();
+  if(topic==='support')  await startSupport();
+}
+
+// ── CREDIT FLOW ───────────────────────────────
+
+async function startCredit() {
+  busy=true;
+  const r=await addBubble('out','Apply for Credit'); addTs(r,'out');
+  await sleep(400);
+  let t=await showTyping(); await sleep(1000); rmTyping();
+  await addBubble('inc','Great choice! Our NBA Model will match you to the best credit product based on your PayPal profile.<br><br>First, let me securely connect your PayPal account. This uses OAuth — I never see your password. 🔒');
+  addTs(await lastRow(),'inc');
+  await sleep(300);
+  // Show connect card
+  const row=makeRow('inc');
+  const bbl=document.createElement('div'); bbl.className='bbl'; bbl.innerHTML=authCardHTML(); row.appendChild(bbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ row.classList.add('show'); scroll(); }));
+  flowState='greeted'; busy=false;
+}
+
+async function handleConnect() {
+  if(busy||flowState!=='greeted')return;
+  busy=true;
+  const btn=$('ac-btn');
+  if(btn){btn.textContent='Connecting...';btn.disabled=true;}
+  await sleep(600);
+  if(btn){btn.textContent='✓ Connected';btn.classList.add('done');}
+
+  setStepActive(1);
+  await showFlash(1);
+  nodeDone(0);nodeDone(1);lineOn(0);lineOn(1);nodeOn(2);
+
+  const uid='pp_vg_'+rnd(6);
+  storeReq(2,[
+    `<span class="cc"># OAuth 2.0 — identity connect</span>`,
+    `<span class="ck">POST</span> <span class="cs">/v1/identity/openidconnect/token</span>`,
+    `<span class="cy">"grant_type"</span>: <span class="cs">"authorization_code"</span>,`,
+    `<span class="cy">"client_id"</span>:  <span class="cs">"AVz8Kx...mN3Q"</span>,`,
+    `<span class="cy">"scope"</span>:      <span class="cs">"openid profile credit.offers"</span>`,
+  ],'AUTHORIZING','on');
+
+  let r=await addBubble('out','Connected ✓'); addTs(r,'out');
+  await sleep(500);
+
+  nodeDone(2);lineOn(2);
+  storeRes(2,[
+    `<span class="cy">"status"</span>: <span class="cg">"authorized"</span>,`,
+    `<span class="cy">"user_id"</span>: <span class="cs">"${uid}"</span>,`,
+    `<span class="cy">"name"</span>:    <span class="cs">"Vijay Ganesan"</span>`,
+  ],'AUTHORIZED','ok');
+
+  // NBA Model fires automatically after auth
+  setStepActive(2);
+  await showFlash(2);
+  nodeOn(3);
+
+  storeReq(3,[
+    `<span class="cc"># NBA Model — credit-offers</span>`,
+    `<span class="ck">POST</span> <span class="cs">/v2/nba/credit-offers</span>`,
+    `<span class="cy">"user"</span>: {`,
+    `  <span class="cy">"id"</span>: <span class="cs">"${uid}"</span>, <span class="cy">"name"</span>: <span class="cs">"Vijay Ganesan"</span>,`,
+    `  <span class="cy">"pp_tenure_mo"</span>: <span class="cn">84</span>, <span class="cy">"credit_band"</span>: <span class="cs">"prime_plus"</span>`,
+    `},`,
+    `<span class="cy">"context"</span>: { <span class="cy">"platform"</span>: <span class="cs">"${platLabel()}"</span>, <span class="cy">"trigger"</span>: <span class="cs">"conversational_discovery"</span> }`,
+  ],'FIRING','on');
+
+  let t=await showTyping(); await sleep(1400); rmTyping();
+  r=await addBubble('inc','⚡ Scoring your profile with the NBA Model...');
+  addTs(r,'inc');
+
+  await sleep(1800);
+  nodeDone(3);lineOn(3);
+  storeRes(3,[
+    `<span class="cy">"status"</span>: <span class="cg">"success"</span>,`,
+    `<span class="cy">"offers_count"</span>: <span class="cn">3</span>, <span class="cy">"decision_ms"</span>: <span class="cn">2847</span>,`,
+    `<span class="cy">"model_ver"</span>: <span class="cs">"nba-credit-v4.1"</span>`,
+  ],'RESPONDED','ok');
+
+  // Step 4 — present offers, wait for selection
+  setStepActive(3);
+  await showFlash(3);
+  nodeOn(4);
+
+  storeReq(4,[
+    `<span class="cy">"offers_returned"</span>: <span class="cn">3</span>,`,
+    `<span class="cy">"presented_to_user"</span>: <span class="ck">true</span>,`,
+    `<span class="cy">"channel"</span>: <span class="cs">"${platLabel()}"</span>`,
+  ],'OFFERS READY','on');
+  nodeData[4].res='offers'; selectNode(4);
+
+  t=await showTyping(); await sleep(800); rmTyping();
+  r=await addBubble('inc','🎯 Great news — the NBA Model matched you to <strong>3 personalised offers</strong>.<br>Tap one to learn more:');
+  addTs(r,'inc');
+  await sleep(250);
+  const ofrow=makeRow('inc');
+  const ofbbl=document.createElement('div'); ofbbl.className='bbl bbl-wide'; ofbbl.innerHTML=offersHTML(); ofrow.appendChild(ofbbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ ofrow.classList.add('show'); scroll(); }));
+  flowState='offers'; busy=false;
+}
+
+async function handleOffer(i) {
+  if(busy||flowState!=='offers')return;
+  busy=true; chosenOffer=i;
+  document.querySelectorAll('.oc').forEach((c,j)=>{ c.classList.toggle('picked',j===i); c.classList.add('disabled'); });
+  if(selectedNode===4) renderDetail(4);
+  const o=OFFERS[i];
+  await sleep(150);
+  let r=await addBubble('out',`${o.name} 👍`); addTs(r,'out');
+  await sleep(450);
+  let t=await showTyping(); await sleep(900); rmTyping();
+  r=await addBubble('inc',`<b>${o.name}</b><br><br>
+    💳 Credit limit: <b>${o.amt}</b><br>
+    📋 ${o.detail}<br><br>
+    Would you like to go ahead with this? Anything you'd like to know first?`);
+  addTs(r,'inc');
+  await sleep(300);
+
+  // Wait chips — user can ask or proceed
+  const cRow=makeRow('inc');
+  const cBbl=document.createElement('div'); cBbl.className='bbl';
+  cBbl.innerHTML=`<div class="chips">
+    <div class="chip" onclick="proceedApply()">Yes, apply now</div>
+    <div class="chip" onclick="askMoreInfo()">Tell me more</div>
+    <div class="chip" onclick="goBackOffers()">See other offers</div>
+  </div>`;
+  cRow.appendChild(cBbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ cRow.classList.add('show'); scroll(); }));
+
+  storeReq(4,[
+    `<span class="cc"># Awaiting user decision</span>`,
+    `<span class="cy">"selected_offer"</span>: <span class="cs">"${o.name}"</span>,`,
+    `<span class="cy">"limit"</span>: <span class="cs">"${o.amt}"</span>,`,
+    `<span class="cy">"state"</span>: <span class="cs">"user_reviewing"</span>`,
+  ],'AWAITING','on');
+  flowState='reviewing'; busy=false;
+}
+
+async function proceedApply() {
+  if(busy||flowState!=='reviewing') return;
+  busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  const o=OFFERS[chosenOffer];
+  let r=await addBubble('out','Yes, apply now'); addTs(r,'out');
+  await sleep(400);
+  let t=await showTyping(); await sleep(800); rmTyping();
+  r=await addBubble('inc','✨ Here\'s your application summary. Review the details and tap Submit when ready:');
+  addTs(r,'inc');
+  await sleep(250);
+  const crow=makeRow('inc');
+  const cbbl=document.createElement('div'); cbbl.className='bbl'; cbbl.innerHTML=confirmHTML(chosenOffer); crow.appendChild(cbbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ crow.classList.add('show'); scroll(); }));
+  storeReq(4,[
+    `<span class="cc"># Application draft</span>`,
+    `<span class="ck">POST</span> <span class="cs">/v2/credit/applications</span>`,
+    `<span class="cy">"offer_id"</span>: <span class="cs">"offer_00${chosenOffer+1}"</span>,`,
+    `<span class="cy">"product"</span>:  <span class="cs">"${o.name}"</span>,`,
+    `<span class="cy">"channel"</span>:  <span class="cs">"${platLabel()}"</span>,`,
+    `<span class="cy">"consent"</span>:  <span class="ck">true</span>`,
+    `<span class="cc">── Awaiting submission ───────</span>`,
+  ],'AWAITING','on');
+  flowState='confirm'; busy=false;
+}
+
+async function askMoreInfo() {
+  if(busy) return;
+  busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  const o=OFFERS[chosenOffer];
+  let r=await addBubble('out','Tell me more'); addTs(r,'out');
+  await sleep(300);
+  let t=await showTyping(); await sleep(1000); rmTyping();
+  r=await addBubble('inc',`Here's what to know about <b>${o.name}</b>:<br><br>
+    ✅ <b>Instant decision</b> — know in under 4 seconds<br>
+    🔒 <b>No hard credit pull</b> to check eligibility<br>
+    📱 <b>Digital-first</b> — manage entirely in PayPal<br>
+    🛡 <b>Buyer Protection</b> included on all purchases<br>
+    💸 <b>${o.detail}</b><br><br>
+    Ready to proceed?`);
+  addTs(r,'inc');
+  await sleep(250);
+  const cRow=makeRow('inc');
+  const cBbl=document.createElement('div'); cBbl.className='bbl';
+  cBbl.innerHTML=`<div class="chips">
+    <div class="chip" onclick="proceedApply()">Yes, apply now</div>
+    <div class="chip" onclick="goBackOffers()">See other offers</div>
+  </div>`;
+  cRow.appendChild(cBbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ cRow.classList.add('show'); scroll(); }));
+  busy=false;
+}
+
+async function goBackOffers() {
+  if(busy) return;
+  busy=true;
+  chosenOffer=null;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  document.querySelectorAll('.oc').forEach(c=>{c.classList.remove('picked','disabled');});
+  let r=await addBubble('out','See other offers'); addTs(r,'out');
+  await sleep(400);
+  let t=await showTyping(); await sleep(700); rmTyping();
+  r=await addBubble('inc','Of course! Take your time — here are all three options again:');
+  addTs(r,'inc');
+  await sleep(250);
+  const ofrow=makeRow('inc');
+  const ofbbl=document.createElement('div'); ofbbl.className='bbl bbl-wide'; ofbbl.innerHTML=offersHTML(); ofrow.appendChild(ofbbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ ofrow.classList.add('show'); scroll(); }));
+  flowState='offers'; busy=false;
+}
+
+async function handleSubmit() {
+  if(busy||flowState!=='confirm')return;
+  busy=true;
+  const btn=$('cc-btn');
+  if(btn){btn.textContent='Processing...';btn.disabled=true;}
+  await sleep(1600);
+  if(btn){btn.textContent='✓ Submitted!';btn.classList.add('done');}
+  nodeDone(4);
+  setStepActive(4);
+  await showFlash(4);
+
+  const o=OFFERS[chosenOffer];
+  storeRes(4,[
+    `<span class="cc"># Application approved ✅</span>`,
+    `<span class="cy">"status"</span>: <span class="cg">"approved"</span>,`,
+    `<span class="cy">"product"</span>: <span class="cs">"${o.name}"</span>,`,
+    `<span class="cy">"limit"</span>: <span class="cs">"${o.amt}"</span>,`,
+    `<span class="cy">"decision_ms"</span>: <span class="cn">3120</span>`,
+  ],'APPROVED','ok');
+  nodeData[4].badge='APPROVED'; nodeData[4].badgeCls='ok';
+  if(selectedNode===4) renderDetail(4);
+
+  let t=await showTyping(); await sleep(1200); rmTyping();
+  let r=await addBubble('inc',`🎊 <b>Approved, Vijay Ganesan!</b><br>Your <b>${o.name}</b> is active. Credit limit: <b>${o.amt}</b>.<br>Decision time: 3.1 seconds.`);
+  addTs(r,'inc');
+  await sleep(600);
+  t=await showTyping(); await sleep(700); rmTyping();
+  r=await addBubble('inc',`📲 All done inside ${platLabel()} — no app downloads, no redirects. That's Agentic Commerce.`);
+  addTs(r,'inc');
+  await sleep(400);
+
+  // Post-approval menu — full topic grid
+  const chipRow=makeRow('inc');
+  const chipBbl=document.createElement('div'); chipBbl.className='bbl bbl-wide';
+  chipBbl.innerHTML=`<div style="font-size:0.6875rem;font-weight:300;color:rgba(255,255,255,0.5);margin-bottom:8px">What would you like to do next?</div>
+    <div class="topic-grid">
+      <div class="topic-btn" onclick="openScreen('statement')"><span class="tb-icon">📋</span><span class="tb-lbl">View Statement</span><span class="tb-sub">Transactions & balance</span></div>
+      <div class="topic-btn" onclick="openScreen('card')"><span class="tb-icon">🃏</span><span class="tb-lbl">Manage Card</span><span class="tb-sub">Controls & settings</span></div>
+      <div class="topic-btn" onclick="startBalance()"><span class="tb-icon">💰</span><span class="tb-lbl">Check Balance</span><span class="tb-sub">Balance & due date</span></div>
+      <div class="topic-btn" onclick="startRewards()"><span class="tb-icon">🎁</span><span class="tb-lbl">View Rewards</span><span class="tb-sub">Cashback & points</span></div>
+    </div>`;
+  chipRow.appendChild(chipBbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ chipRow.classList.add('show'); scroll(); }));
+  flowState='done'; busy=false;
+}
+
+// ── BALANCE FLOW ──────────────────────────────
+async function startBalance() {
+  busy=true;
+  // dim any topic menu
+  document.querySelectorAll('.topic-btn').forEach(b=>{b.style.opacity='0.45';b.style.pointerEvents='none';});
+
+  if(flowState==='menu'||flowState==='done') {
+    let r=await addBubble('out','Check Balance'); addTs(r,'out');
+    await sleep(300);
+  }
+
+  let t=await showTyping(); await sleep(900); rmTyping();
+  const o=OFFERS[chosenOffer??0];
+  const lim=parseFloat(o.amt.replace(/[^0-9.]/g,''));
+  const used=847.23, avail=(lim-used).toFixed(2), pct=Math.round((used/lim)*100);
+  let r=await addBubble('inc',`<b>Your Account Summary</b><br><br>
+    💳 <b>Current Balance:</b> $${used.toFixed(2)}<br>
+    ✅ <b>Available Credit:</b> $${avail}<br>
+    📅 <b>Payment Due:</b> Apr 15, 2026<br>
+    💵 <b>Minimum Payment:</b> $25.00<br>
+    📊 <b>Utilisation:</b> ${pct}% of ${o.amt}`);
+  addTs(r,'inc');
+  await sleep(300);
+
+  const cRow=makeRow('inc');
+  const cBbl=document.createElement('div'); cBbl.className='bbl';
+  cBbl.innerHTML=`<div class="chips">
+    <div class="chip" onclick="openScreen('statement')">📋 View Statement</div>
+    <div class="chip" onclick="showPayOptions()">💸 Pay Now</div>
+    <div class="chip" onclick="showSpendingLimit()">📊 Spending Limit</div>
+  </div>`;
+  cRow.appendChild(cBbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ cRow.classList.add('show'); scroll(); }));
+  if(flowState==='menu') flowState='done';
+  busy=false;
+}
+
+async function showPayOptions() {
+  if(busy) return; busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  let r=await addBubble('out','Pay Now'); addTs(r,'out');
+  let t=await showTyping(); await sleep(800); rmTyping();
+  r=await addBubble('inc',`<b>Payment Options</b><br><br>
+    • Minimum payment: <b>$25.00</b><br>
+    • Statement balance: <b>$847.23</b><br>
+    • Custom amount<br><br>
+    Tap <b>View Statement</b> to make a payment.`);
+  addTs(r,'inc');
+  const cRow=makeRow('inc');
+  const cBbl=document.createElement('div'); cBbl.className='bbl';
+  cBbl.innerHTML=`<div class="chips"><div class="chip" onclick="openScreen('statement')">📋 Open Statement</div></div>`;
+  cRow.appendChild(cBbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ cRow.classList.add('show'); scroll(); }));
+  busy=false;
+}
+
+async function showSpendingLimit() {
+  if(busy) return; busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  const o=OFFERS[chosenOffer??0];
+  const lim=parseFloat(o.amt.replace(/[^0-9.]/g,''));
+  const used=847.23;
+  let r=await addBubble('out','Spending Limit'); addTs(r,'out');
+  let t=await showTyping(); await sleep(700); rmTyping();
+  r=await addBubble('inc',`<b>Spending Limit Breakdown</b><br><br>
+    🏦 Total Limit: <b>${o.amt}</b><br>
+    💸 Used: <b>$${used.toFixed(2)}</b> (${Math.round(used/lim*100)}%)<br>
+    ✅ Remaining: <b>$${(lim-used).toFixed(2)}</b>`);
+  addTs(r,'inc');
+  busy=false;
+}
+
+// ── REWARDS FLOW ──────────────────────────────
+async function startRewards() {
+  busy=true;
+  document.querySelectorAll('.topic-btn,.chip').forEach(b=>{b.style.opacity='0.45';b.style.pointerEvents='none';});
+
+  if(flowState==='menu'||flowState==='done') {
+    let r=await addBubble('out','Rewards'); addTs(r,'out');
+    await sleep(300);
+  }
+
+  let t=await showTyping(); await sleep(950); rmTyping();
+  const isCS=chosenOffer===1;
+  let r=await addBubble('inc',`<b>Your Rewards Summary 🎁</b><br><br>
+    💳 <b>Card:</b> ${OFFERS[chosenOffer??0].name}<br>
+    💵 <b>Total Cashback Earned:</b> $42.10<br>
+    📅 <b>This Month:</b> $12.80<br>
+    ⭐ <b>Earn Rate:</b> ${isCS?'3% on PayPal · 1.5% everywhere':'N/A — upgrade to Cashback Mastercard'}<br>
+    🎯 <b>Next Milestone:</b> $57.90 to reach $100 reward`);
+  addTs(r,'inc');
+  await sleep(300);
+
+  const cRow=makeRow('inc');
+  const cBbl=document.createElement('div'); cBbl.className='bbl';
+  cBbl.innerHTML=`<div class="chips">
+    <div class="chip" onclick="showRewardHistory()">📋 Transaction History</div>
+    ${isCS?'':'<div class="chip" onclick="suggestUpgrade()">⬆️ Upgrade Card</div>'}
+    <div class="chip" onclick="showRedeemInfo()">🎉 How to Redeem</div>
+  </div>`;
+  cRow.appendChild(cBbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ cRow.classList.add('show'); scroll(); }));
+  if(flowState==='menu') flowState='done';
+  busy=false;
+}
+
+async function showRewardHistory() {
+  if(busy) return; busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  let r=await addBubble('out','Transaction History'); addTs(r,'out');
+  let t=await showTyping(); await sleep(800); rmTyping();
+  r=await addBubble('inc','📋 Here\'s your full statement with transactions:');
+  addTs(r,'inc');
+  setTimeout(()=>openScreen('statement'),500);
+  busy=false;
+}
+
+async function showRedeemInfo() {
+  if(busy) return; busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  let r=await addBubble('out','How to Redeem'); addTs(r,'out');
+  let t=await showTyping(); await sleep(900); rmTyping();
+  r=await addBubble('inc',`<b>Redeeming Rewards is easy:</b><br><br>
+    1️⃣ Go to PayPal Wallet<br>
+    2️⃣ Select your credit card<br>
+    3️⃣ Tap <b>Redeem Cashback</b><br>
+    4️⃣ Apply to your balance or transfer to bank<br><br>
+    Minimum redemption: <b>$5.00</b>`);
+  addTs(r,'inc');
+  busy=false;
+}
+
+async function suggestUpgrade() {
+  if(busy) return; busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  let r=await addBubble('out','Upgrade Card'); addTs(r,'out');
+  let t=await showTyping(); await sleep(1000); rmTyping();
+  r=await addBubble('inc',`Upgrading to <b>PayPal Cashback Mastercard</b> gives you:<br><br>
+    ⭐ 3% cashback on PayPal purchases<br>
+    💳 1.5% on all other purchases<br>
+    🏦 Up to $5,000 credit limit<br><br>
+    Would you like to apply?`);
+  addTs(r,'inc');
+  await sleep(250);
+  const cRow=makeRow('inc'); const cBbl=document.createElement('div'); cBbl.className='bbl';
+  cBbl.innerHTML=`<div class="chips"><div class="chip" onclick="reapplyFor(1)">Yes, upgrade me</div><div class="chip" onclick="botReply(500,'No problem! Let me know if you change your mind.')">Maybe later</div></div>`;
+  cRow.appendChild(cBbl); requestAnimationFrame(()=>requestAnimationFrame(()=>{ cRow.classList.add('show'); scroll(); }));
+  busy=false;
+}
+
+async function reapplyFor(offerIdx) {
+  if(busy) return; busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  chosenOffer=offerIdx;
+  let r=await addBubble('out','Yes, upgrade me'); addTs(r,'out');
+  await sleep(400);
+  let t=await showTyping(); await sleep(800); rmTyping();
+  r=await addBubble('inc','✨ Here\'s your upgrade application:');
+  addTs(r,'inc');
+  await sleep(250);
+  const crow=makeRow('inc'); const cbbl=document.createElement('div'); cbbl.className='bbl'; cbbl.innerHTML=confirmHTML(offerIdx); crow.appendChild(cbbl);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ crow.classList.add('show'); scroll(); }));
+  flowState='confirm'; busy=false;
+}
+
+// ── SUPPORT FLOW ──────────────────────────────
+async function startSupport() {
+  busy=true;
+  document.querySelectorAll('.topic-btn').forEach(b=>{b.style.opacity='0.45';b.style.pointerEvents='none';});
+
+  if(flowState==='menu'||flowState==='done') {
+    let r=await addBubble('out','Support'); addTs(r,'out');
+    await sleep(300);
+  }
+
+  let t=await showTyping(); await sleep(900); rmTyping();
+  let r=await addBubble('inc',`<b>How can I help?</b><br><br>
+    I can answer most questions directly. Or choose a channel below:`);
+  addTs(r,'inc');
+  await sleep(300);
+
+  const cRow=makeRow('inc'); const cBbl=document.createElement('div'); cBbl.className='bbl';
+  cBbl.innerHTML=`<div class="chips">
+    <div class="chip" onclick="supportChannel('call')">📞 Call PayPal</div>
+    <div class="chip" onclick="supportChannel('chat')">💬 Live Chat</div>
+    <div class="chip" onclick="supportChannel('dispute')">⚠️ Dispute a Charge</div>
+    <div class="chip" onclick="supportChannel('lost')">🔒 Lost Card</div>
+  </div>`;
+  cRow.appendChild(cBbl); requestAnimationFrame(()=>requestAnimationFrame(()=>{ cRow.classList.add('show'); scroll(); }));
+  if(flowState==='menu') flowState='done';
+  busy=false;
+}
+
+async function supportChannel(ch) {
+  if(busy) return; busy=true;
+  document.querySelectorAll('.chip').forEach(c=>{c.style.opacity='0.4';c.style.pointerEvents='none';});
+  const msgs={
+    call:`📞 <b>Call PayPal Credit Support</b><br><br><b>1-888-221-1161</b><br>Mon–Fri 8AM–11PM ET<br>Sat–Sun 9AM–9PM ET<br><br>Have your account number ready.`,
+    chat:`💬 <b>Live Chat</b><br><br>A PayPal agent typically responds in under 2 minutes.<br><br><b>Tap to start:</b> paypal.com/us/smarthelp/home`,
+    dispute:`⚠️ <b>Dispute a Charge</b><br><br>1. Go to Activity in your PayPal app<br>2. Find the transaction<br>3. Tap <b>Report a Problem</b><br><br>Resolution typically within <b>5–10 business days</b>.`,
+    lost:`🔒 <b>Lost or Stolen Card</b><br><br>Your card has been <b>frozen immediately</b>. A replacement will arrive in 3–5 business days.<br><br>Call <b>1-888-221-1161</b> to confirm.`,
+  };
+  const labels={call:'Call PayPal',chat:'Live Chat',dispute:'Dispute a Charge',lost:'Lost Card'};
+  let r=await addBubble('out',labels[ch]); addTs(r,'out');
+  let t=await showTyping(); await sleep(900); rmTyping();
+  r=await addBubble('inc',msgs[ch]); addTs(r,'inc');
+  busy=false;
+}
+
+// ── HELPERS ───────────────────────────────────
+function lastRow() { return bg().lastElementChild; }
+
+function noAction(el){el.classList.add('used');}
+
+// ── MOCK SCREENS ──────────────────────────────
+function openScreen(type) {
+  const skin = $(PLAT_MAP[plat].skin);
+  if(!skin) return;
+
+  // Remove any existing screen
+  skin.querySelectorAll('.mock-screen').forEach(s=>s.remove());
+
+  const o = OFFERS[chosenOffer ?? 0];
+  const screen = document.createElement('div');
+  screen.className = 'mock-screen';
+  screen.id = 'mock-screen';
+
+  if(type === 'statement') {
+    screen.innerHTML = statementHTML(o);
+  } else {
+    screen.innerHTML = cardHTML(o);
+  }
+
+  skin.appendChild(screen);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>screen.classList.add('open')));
+}
+
+function closeScreen() {
+  const s = $('mock-screen');
+  if(!s) return;
+  s.classList.remove('open');
+  setTimeout(()=>s.remove(), 400);
+}
+
+function statementHTML(o) {
+  const txns = [
+    { icon:'👟', bg:'rgba(255,165,0,0.15)', name:'Nike.com', cat:'Sports & Fitness', amt:'-$129.00', date:'Apr 1' },
+    { icon:'🍔', bg:'rgba(255,80,0,0.15)',  name:'Uber Eats', cat:'Food & Drink',     amt:'-$24.50',  date:'Mar 30' },
+    { icon:'📦', bg:'rgba(255,165,0,0.12)', name:'Amazon',   cat:'Shopping',          amt:'-$67.99',  date:'Mar 28' },
+    { icon:'☕', bg:'rgba(0,120,60,0.15)',  name:'Starbucks',cat:'Coffee',             amt:'-$8.75',   date:'Mar 27' },
+    { icon:'🎵', bg:'rgba(96,205,255,0.12)',name:'Spotify',  cat:'Subscriptions',     amt:'-$9.99',   date:'Mar 25' },
+    { icon:'🛒', bg:'rgba(255,0,80,0.12)',  name:'Target',   cat:'Shopping',          amt:'-$45.20',  date:'Mar 23' },
+    { icon:'🎬', bg:'rgba(229,9,20,0.15)',  name:'Netflix',  cat:'Subscriptions',     amt:'-$15.99',  date:'Mar 20' },
+    { icon:'💳', bg:'rgba(96,205,255,0.1)', name:'PayPal Credit', cat:'Payment Received', amt:'+$200.00', date:'Mar 15', cr:true },
+  ];
+  return `
+  <div class="sc-hd">
+    <div class="sc-back" onclick="closeScreen()">‹ Back</div>
+    <div class="sc-title">Statement</div>
+    <div class="sc-sub">Apr 2026</div>
+  </div>
+  <div class="sc-body">
+    <div class="stmt-card">
+      <div class="sc-lbl">Current Balance</div>
+      <div class="sc-amt">$847.23</div>
+      <div class="sc-meta-row">
+        <div class="sc-meta-item"><div class="ml">Available Credit</div><div class="mv hi">$${(parseFloat(o.amt.replace(/[^0-9.]/g,''))-847.23).toFixed(2)}</div></div>
+        <div class="sc-meta-item"><div class="ml">Due Date</div><div class="mv">Apr 15</div></div>
+        <div class="sc-meta-item"><div class="ml">Min Payment</div><div class="mv">$25.00</div></div>
+      </div>
+      <button class="stmt-pay-btn">Pay Now</button>
+    </div>
+
+    <div class="stmt-sec-hd">
+      <div class="stmt-sec-title">Recent Transactions</div>
+      <div class="stmt-filter">Filter ▾</div>
+    </div>
+    <div class="txn-list">
+      ${txns.map(t=>`
+      <div class="txn">
+        <div class="txn-ic" style="background:${t.bg}">${t.icon}</div>
+        <div class="txn-info"><div class="txn-name">${t.name}</div><div class="txn-cat">${t.cat}</div></div>
+        <div class="txn-right"><div class="txn-amt${t.cr?' cr':''}">${t.amt}</div><div class="txn-date">${t.date}</div></div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function cardHTML(o) {
+  const toggles = [
+    { icon:'🌐', bg:'rgba(96,205,255,0.1)', name:'Online Purchases',          sub:'Web & in-app transactions', on:true  },
+    { icon:'✈️', bg:'rgba(255,165,0,0.1)',  name:'International Transactions',sub:'Purchases outside US',      on:false },
+    { icon:'📱', bg:'rgba(96,205,255,0.1)', name:'Contactless Payments',      sub:'Tap to pay',                on:true  },
+    { icon:'🔔', bg:'rgba(255,80,0,0.1)',   name:'Spend Alerts',              sub:'Notify on every transaction',on:true  },
+  ];
+  const used = 847.23;
+  const limit = parseFloat(o.amt.replace(/[^0-9.]/g,''));
+  const pct = Math.round((used/limit)*100);
+  return `
+  <div class="sc-hd">
+    <div class="sc-back" onclick="closeScreen()">‹ Back</div>
+    <div class="sc-title">Manage Card</div>
+    <div class="sc-sub">${o.name}</div>
+  </div>
+  <div class="sc-body">
+    <div class="vcard">
+      <div class="vc-shine"></div>
+      <div class="vc-top">
+        <div class="vc-pp">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M19.5 6.5C19.5 9.54 17.04 12 14 12H9.5L8 19H4.5L7 6.5H14Z" fill="#60CDFF"/><path d="M20 4C20 7.04 17.54 9.5 14.5 9.5H10L8.5 16.5H5L7.5 4H14.5Z" fill="white" opacity="0.3"/></svg>
+          <span>PayPal</span>
+        </div>
+        <div class="vc-type">${o.name}</div>
+      </div>
+      <div class="vc-num">
+        <div class="vc-dots">••••  ••••  ••••</div>
+        <div class="vc-last4">4821</div>
+      </div>
+      <div class="vc-bot">
+        <div class="vc-holder">V GANESAN</div>
+        <div class="vc-exp"><div class="el">Expires</div><div class="ev">09/28</div></div>
+      </div>
+    </div>
+
+    <div class="csr-row">
+      <div class="csr"><span class="ci">🧊</span><div class="cl">Freeze</div></div>
+      <div class="csr"><span class="ci">🔄</span><div class="cl">Replace</div></div>
+      <div class="csr"><span class="ci">⚠️</span><div class="cl">Report</div></div>
+      <div class="csr"><span class="ci">🔑</span><div class="cl">Change PIN</div></div>
+    </div>
+
+    <div class="mc-sec">
+      <div class="mc-sec-hd">Spending Limit</div>
+      <div class="limit-wrap">
+        <div class="lw-top"><div class="lw-label">Monthly Limit</div><div class="lw-val">${o.amt}</div></div>
+        <div class="lw-bar"><div class="lw-fill" style="width:${pct}%"></div></div>
+        <div class="lw-sub"><span>$${used.toFixed(2)} used</span><span>${pct}% of limit</span></div>
+      </div>
+    </div>
+
+    <div class="mc-sec">
+      <div class="mc-sec-hd">Controls</div>
+      ${toggles.map((t,i)=>`
+      <div class="trow">
+        <div class="trow-left">
+          <div class="trow-ic" style="background:${t.bg}">${t.icon}</div>
+          <div><div class="trow-name">${t.name}</div><div class="trow-sub">${t.sub}</div></div>
+        </div>
+        <div class="tog ${t.on?'on':'off'}" onclick="this.classList.toggle('on');this.classList.toggle('off')"><div class="tog-k"></div></div>
+      </div>`).join('')}
+    </div>
+
+    <div class="mc-sec">
+      <div class="mc-sec-hd">Card Details</div>
+      <div class="det-row"><div class="det-lbl">Card Number</div><div style="display:flex;align-items:center"><div class="det-val" id="cn-val">•••• •••• •••• 4821</div><div class="det-show" onclick="toggleCardNum()">Show</div></div></div>
+      <div class="det-row"><div class="det-lbl">CVV</div><div style="display:flex;align-items:center"><div class="det-val" id="cvv-val">•••</div><div class="det-show" onclick="toggleCVV()">Show</div></div></div>
+      <div class="det-row"><div class="det-lbl">Expiry</div><div class="det-val">09 / 28</div></div>
+      <div class="det-row"><div class="det-lbl">Credit Limit</div><div class="det-val">${o.amt}</div></div>
+    </div>
+  </div>`;
+}
+
+function toggleCardNum() {
+  const el=$('cn-val');
+  if(!el)return;
+  const hidden='•••• •••• •••• 4821', shown='4821 0043 8812 4821';
+  el.textContent = el.textContent===hidden ? shown : hidden;
+}
+function toggleCVV() {
+  const el=$('cvv-val');
+  if(!el)return;
+  el.textContent = el.textContent==='•••' ? '847' : '•••';
+}
+
+// ── PLATFORM ──────────────────────────────────
+function setPlatform(p) {
+  if(p===plat) return;
+  saveState(plat);          // snapshot current platform
+  plat=p;
+  document.querySelectorAll('.pb').forEach((b,i)=>b.classList.toggle('on',['wa','tg','ig','im','ms'][i]===p));
+  if(platStates[p]) restoreState(p);  // resume existing platform
+  else initPlatform();                // fresh start for new platform
+}
+
+// ── STATE SAVE / RESTORE ──────────────────────
+function saveState(p) {
+  platStates[p] = {
+    flowState, chosenOffer, currentStep, selectedNode, activeTab, busy:false,
+    chatHTML: $(PLAT_MAP[p].bg)?.innerHTML || '',
+    nodeData: JSON.parse(JSON.stringify(nodeData)),
+    nodeVis:  [0,1,2,3,4].map(i=>({ on:!!$(`fn${i}`)?.classList.contains('on'), ok:!!$(`fn${i}`)?.classList.contains('ok'), clickable:!!$(`fn${i}`)?.classList.contains('clickable') })),
+    lineVis:  [0,1,2,3].map(i=>!!$(`fa${i}`)?.classList.contains('lit')),
+    stepActive: currentStep,
+  };
+}
+
+function restoreState(p) {
+  const s = platStates[p];
+  // Show correct skin
+  Object.entries(PLAT_MAP).forEach(([k,{skin}])=>$(skin)?.classList.toggle('on',k===p));
+  // Restore chat
+  const bgEl = $(PLAT_MAP[p].bg);
+  if(bgEl) bgEl.innerHTML = s.chatHTML;
+  // Restore globals
+  flowState=s.flowState; chosenOffer=s.chosenOffer; currentStep=s.currentStep;
+  selectedNode=s.selectedNode; activeTab=s.activeTab; busy=false;
+  // Restore node visuals
+  s.nodeVis.forEach((v,i)=>{
+    $(`fn${i}`)?.classList.remove('on','ok','sel','clickable');
+    if(v.on)       $(`fn${i}`)?.classList.add('on');
+    if(v.ok)       $(`fn${i}`)?.classList.add('ok');
+    if(v.clickable)$(`fn${i}`)?.classList.add('clickable');
+  });
+  s.lineVis.forEach((lit,i)=>{ $(`fa${i}`)?.classList.remove('lit'); if(lit)$(`fa${i}`)?.classList.add('lit'); });
+  // Restore nodeData
+  Object.assign(nodeData, JSON.parse(JSON.stringify(s.nodeData)));
+  // Restore step bar
+  buildStepBars();
+  setStepActive(s.stepActive||0);
+  // Restore detail panel
+  if(s.selectedNode!==null) {
+    [0,1,2,3,4].forEach(j=>{ $(`fn${j}`)?.classList.remove('sel'); $(`fl${j}`)?.classList.remove('sel'); });
+    $(`fn${s.selectedNode}`)?.classList.add('sel');
+    renderDetail(s.selectedNode);
+  } else {
+    $('detail-hint').style.display='flex';
+    $('detail-code').style.display='none';
+    $('detail-offers').style.display='none';
+    $('d-tabs').style.display='none';
+    $('d-badge').style.display='none';
+    $('d-icon').textContent='◈'; $('d-name').textContent='Click a node above to inspect';
+  }
+}
+
+function initPlatform() {
+  Object.entries(PLAT_MAP).forEach(([k,{skin}])=>$(skin)?.classList.toggle('on',k===plat));
+  const bgEl=$(PLAT_MAP[plat].bg); if(bgEl)bgEl.innerHTML='<div class="dt"><span>Today</span></div>';
+  flowState='idle'; chosenOffer=null; selectedNode=null; activeTab='req'; currentStep=0; busy=false;
+  [0,1,2,3,4].forEach(i=>{
+    $(`fn${i}`)?.classList.remove('on','ok','sel','clickable');
+    $(`fl${i}`)?.classList.remove('on','ok','sel');
+    Object.assign(nodeData[i],{badge:'',badgeCls:'',req:null});
+    nodeData[i].res=i===4?'offers':null;
+  });
+  [0,1,2,3].forEach(i=>$(`fa${i}`)?.classList.remove('lit'));
+  $('detail-hint').style.display='flex';
+  $('detail-code').style.display='none';
+  $('detail-offers').style.display='none';
+  $('d-tabs').style.display='none';
+  $('d-badge').style.display='none';
+  $('d-icon').textContent='◈'; $('d-name').textContent='Click a node above to inspect';
+  buildStepBars();
+  setTimeout(greet,400);
+}
+
+// ── RESET (only current platform) ─────────────
+function reset() {
+  const f=$(PLAT_MAP[plat].flash); if(f){f.innerHTML='';f.classList.remove('show');}
+  delete platStates[plat];
+  initPlatform();
+}
+
+// ── CONVERSATIONAL INPUT ──────────────────────
+function onKey(e, p) {
+  if(e.key==='Enter') { e.preventDefault(); doSend(p); }
+}
+
+function doSend(p) {
+  if(p!==plat) return;
+  const inp = $(`ib-${p}`);
+  if(!inp) return;
+  const text = inp.value.trim();
+  if(!text) return;
+  inp.value='';
+  handleConversation(text);
+}
+
+async function handleConversation(text) {
+  if(busy) return;
+  const t = text.toLowerCase().trim();
+
+  // Add user bubble
+  const r = await addBubble('out', escHtml(text));
+  addTs(r,'out');
+
+  // ── CREDIT intents ────────────────────────
+  if(/(apply|credit|card|loan|borrow|offer|limit increase|get credit|pay later|cashback master|credit line)/.test(t)) {
+    if(flowState==='idle'||flowState==='menu') { await startCredit(); return; }
+    if(flowState==='offers') { await botReply(600,'Please tap one of the offer cards above to select it.'); return; }
+    if(flowState==='confirm'||flowState==='reviewing') { await botReply(600,'You have an application in progress — tap Submit when ready, or choose a different offer.'); return; }
+    if(flowState==='done') {
+      await botReply(800,'You already have an approved product! Want to apply for another?');
+      const cRow=makeRow('inc'); const cBbl=document.createElement('div'); cBbl.className='bbl';
+      cBbl.innerHTML=`<div class="chips"><div class="chip" onclick="flowState='menu';startCredit()">Yes, apply again</div><div class="chip" onclick="openScreen('card')">View my card</div></div>`;
+      cRow.appendChild(cBbl); requestAnimationFrame(()=>requestAnimationFrame(()=>{ cRow.classList.add('show'); scroll(); }));
+      return;
+    }
+    await botReply(600,'Please connect your PayPal account first to see credit offers.'); return;
+  }
+
+  // ── BALANCE intents ───────────────────────
+  if(/(balance|owe|due date|due|minimum|min pay|available credit|statement summary)/.test(t)) {
+    await startBalance(); return;
+  }
+
+  // ── STATEMENT / TRANSACTIONS ──────────────
+  if(/(statement|transactions?|spending|history|recent|charges|purchases|view statement)/.test(t)) {
+    await botReply(600,'📋 Opening your statement...');
+    setTimeout(()=>openScreen('statement'),500); return;
+  }
+
+  // ── CARD MANAGEMENT ───────────────────────
+  if(/(manage|card settings?|card details?|controls?|settings|freeze|block|lock|suspend|replace|lost card)/.test(t)) {
+    if(/(freeze|block|lock|suspend|lost)/.test(t)) await botReply(700,'❄️ Opening card controls...');
+    else await botReply(700,'🃏 Opening card management...');
+    setTimeout(()=>openScreen('card'),500); return;
+  }
+
+  // ── REWARDS ───────────────────────────────
+  if(/(reward|cashback|points?|miles|earn|redeem|upgrade)/.test(t)) {
+    await startRewards(); return;
+  }
+
+  // ── SPENDING LIMIT ────────────────────────
+  if(/(limit|how much.*left|remaining|budget|utilis|utiliz)/.test(t)) {
+    await showSpendingLimit(); return;
+  }
+
+  // ── CREDIT SCORE ──────────────────────────
+  if(/(credit score|score|fico|creditworthiness|rating)/.test(t)) {
+    await botReply(1000,`📊 <b>Your Credit Summary</b><br><br>
+      🟢 <b>Score:</b> 742 (Good)<br>
+      📈 <b>Change:</b> +12 pts this month<br>
+      🏦 <b>Utilisation:</b> 34%<br>
+      ⏱ <b>Payment History:</b> 100% on time<br>
+      📅 <b>Oldest Account:</b> 7 years`); return;
+  }
+
+  // ── PAY / PAYMENT ─────────────────────────
+  if(/(pay( now| off| balance| minimum)?|make.*payment|payment)/.test(t)) {
+    await showPayOptions(); return;
+  }
+
+  // ── SUPPORT ───────────────────────────────
+  if(/(support|contact|help me|issue|problem|talk.*human|agent|representative|dispute|call paypal)/.test(t)) {
+    await startSupport(); return;
+  }
+
+  // ── MENU / HELP ───────────────────────────
+  if(/(^hi$|^hello$|help|what can|commands|options|menu|start|home)/.test(t)) {
+    await botReply(700,`What can I help you with?`);
+    showTopicMenu(); return;
+  }
+
+  // ── THANKS ────────────────────────────────
+  if(/(thanks|thank you|thx|great|awesome|perfect|nice|got it|ok$|okay$)/.test(t)) {
+    const replies=['Happy to help! Anything else?','Of course! Let me know if you need anything.','Glad I could assist 😊'];
+    await botReply(500, replies[Math.floor(Math.random()*replies.length)]); return;
+  }
+
+  // ── FALLBACK ──────────────────────────────
+  await botReply(900,`I didn't quite catch that. Try asking me about:<br><br>
+    💳 <b>"Apply for credit"</b> · 💰 <b>"Check balance"</b><br>
+    🎁 <b>"View rewards"</b> · 🙋 <b>"Support"</b><br>
+    📋 <b>"View statement"</b> · ❄️ <b>"Freeze card"</b>`);
+}
+async function botReply(delay, html) {
+  await sleep(delay*0.4);
+  const t = await showTyping(); await sleep(delay*0.6); rmTyping();
+  const r = await addBubble('inc', html);
+  addTs(r,'inc');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── MENU BUTTON ───────────────────────────────
+function showMenu() {
+  if(busy) return;
+  // If chat hasn't started yet, let greet handle it
+  if(flowState==='idle') return;
+  // Append topic grid to current chat
+  showTopicMenu();
+  // Scroll to bottom
+  setTimeout(()=>scroll(), 100);
+}
+
+// ── DRAG RESIZE ───────────────────────────────
+(function initResize() {
+  const divider  = document.getElementById('divider');
+  const mainGrid = document.getElementById('main-grid');
+  if(!divider || !mainGrid) return;
+
+  let dragging = false;
+  let startX   = 0;
+  let startW   = 0;
+
+  function getLeftWidth() {
+    const cols = getComputedStyle(mainGrid).gridTemplateColumns.split(' ');
+    return parseFloat(cols[0]);
+  }
+
+  divider.addEventListener('mousedown', e => {
+    dragging = true;
+    startX   = e.clientX;
+    startW   = getLeftWidth();
+    divider.classList.add('dragging');
+    document.body.style.cursor    = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  // Touch support
+  divider.addEventListener('touchstart', e => {
+    dragging = true;
+    startX   = e.touches[0].clientX;
+    startW   = getLeftWidth();
+    divider.classList.add('dragging');
+    e.preventDefault();
+  }, {passive:false});
+
+  function onMove(clientX) {
+    if(!dragging) return;
+    const delta  = clientX - startX;
+    const total  = mainGrid.getBoundingClientRect().width;
+    const newW   = Math.max(260, Math.min(total - 280, startW + delta));
+    mainGrid.style.gridTemplateColumns = `${newW}px 6px 1fr`;
+  }
+
+  document.addEventListener('mousemove',  e => onMove(e.clientX));
+  document.addEventListener('touchmove',  e => onMove(e.touches[0].clientX), {passive:true});
+
+  function onEnd() {
+    if(!dragging) return;
+    dragging = false;
+    divider.classList.remove('dragging');
+    document.body.style.cursor    = '';
+    document.body.style.userSelect = '';
+  }
+
+  document.addEventListener('mouseup',   onEnd);
+  document.addEventListener('touchend',  onEnd);
+})();
+
+// ── INIT ──────────────────────────────────────
+const platStates = {};
+buildStepBars();
+initPlatform();
+</script>
+</body>
+</html>
