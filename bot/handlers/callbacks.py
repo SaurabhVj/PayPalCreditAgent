@@ -144,36 +144,8 @@ async def _handle_credit_start(query, user_id: int):
         ]),
     )
 
-    # Poll for login completion from Mini App
-    import httpx
-    for _ in range(30):  # Poll for up to 60 seconds
-        await asyncio.sleep(2)
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                resp = await client.get(f"{WEBAPP_URL}/api/login-status?telegram_user_id={user_id}")
-                data = resp.json()
-                if data.get("done"):
-                    # Login complete — store user info and continue flow
-                    from bot.services.session import get_session
-                    session = get_session(user_id)
-                    session["name"] = data["name"]
-                    session["email"] = data["email"]
-
-                    await query.message.reply_text(
-                        f"✅ *PayPal account connected!*\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"👤 *{data['name']}*\n"
-                        f"📧 {data['email']}\n"
-                        f"🏦 PayPal member: 36 months\n"
-                        f"💳 Credit band: _prime_\n\n"
-                        f"_Starting credit assessment..._",
-                        parse_mode="Markdown",
-                    )
-                    await asyncio.sleep(1)
-                    await _handle_scoring(query, user_id)
-                    return
-        except Exception:
-            pass
+    # Start background polling for login completion (non-blocking)
+    asyncio.create_task(_poll_login(query, user_id))
 
 
 # ── STEP 2: Post Mini App login — continues flow in bot chat ──
@@ -369,6 +341,42 @@ def _card_action_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("🔑 PIN", callback_data="card:pin"),
         ],
     ])
+
+
+async def _poll_login(query, user_id: int):
+    """Background task — polls API for Mini App login completion."""
+    import httpx
+    import logging
+    logger = logging.getLogger(__name__)
+
+    for _ in range(30):  # Poll for up to 60 seconds
+        await asyncio.sleep(2)
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{WEBAPP_URL}/api/login-status?telegram_user_id={user_id}")
+                data = resp.json()
+                if data.get("done"):
+                    from bot.services.session import get_session
+                    session = get_session(user_id)
+                    session["name"] = data["name"]
+                    session["email"] = data["email"]
+
+                    await query.message.reply_text(
+                        f"✅ *PayPal account connected!*\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"👤 *{data['name']}*\n"
+                        f"📧 {data['email']}\n"
+                        f"🏦 PayPal member: 36 months\n"
+                        f"💳 Credit band: _prime_\n\n"
+                        f"_Starting credit assessment..._",
+                        parse_mode="Markdown",
+                    )
+                    await asyncio.sleep(1)
+                    await _handle_scoring(query, user_id)
+                    return
+        except Exception as e:
+            logger.debug(f"Login poll error: {e}")
+    logger.info(f"Login poll timeout for user {user_id}")
 
 
 def _card_manage_message(name: str = "User") -> str:
