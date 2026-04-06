@@ -132,10 +132,6 @@ async def _handle_credit_start(query, user_id: int):
     # Auth card — "Connect with PayPal" opens Mini App login screen
     login_url = f"{WEBAPP_URL}/webapp?mode=login"
 
-    # Store that this user is in auth flow
-    from bot.services.session import get_session
-    get_session(user_id)["awaiting_login"] = True
-
     await query.message.reply_text(
         "🔐 *Connect PayPal*\n"
         "━━━━━━━━━━━━━━━━━\n"
@@ -147,6 +143,37 @@ async def _handle_credit_start(query, user_id: int):
             [InlineKeyboardButton("🔐 Connect with PayPal", web_app=WebAppInfo(url=login_url))],
         ]),
     )
+
+    # Poll for login completion from Mini App
+    import httpx
+    for _ in range(30):  # Poll for up to 60 seconds
+        await asyncio.sleep(2)
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{WEBAPP_URL}/api/login-status?telegram_user_id={user_id}")
+                data = resp.json()
+                if data.get("done"):
+                    # Login complete — store user info and continue flow
+                    from bot.services.session import get_session
+                    session = get_session(user_id)
+                    session["name"] = data["name"]
+                    session["email"] = data["email"]
+
+                    await query.message.reply_text(
+                        f"✅ *PayPal account connected!*\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"👤 *{data['name']}*\n"
+                        f"📧 {data['email']}\n"
+                        f"🏦 PayPal member: 36 months\n"
+                        f"💳 Credit band: _prime_\n\n"
+                        f"_Starting credit assessment..._",
+                        parse_mode="Markdown",
+                    )
+                    await asyncio.sleep(1)
+                    await _handle_scoring(query, user_id)
+                    return
+        except Exception:
+            pass
 
 
 # ── STEP 2: Post Mini App login — continues flow in bot chat ──

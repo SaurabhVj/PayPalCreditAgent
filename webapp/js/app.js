@@ -86,27 +86,26 @@ async function handleLogin() {
   btn.classList.add('done');
   await sleep(600);
 
-  // If opened from bot chat for login, send data back and close
+  // If opened from bot chat for login, notify API and close
   if (openedForLogin) {
     const email = $('loginEmail').value || 'user@email.com';
-    const pass = $('loginPass').value;
     if (!email) { btn.textContent = 'Log In'; btn.classList.remove('loading'); return; }
     const name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-    // Show success state
     btn.textContent = '✓ Connected — Returning to chat...';
+
+    // Get Telegram user ID and notify backend
+    const tgUserId = tg?.initDataUnsafe?.user?.id || 'unknown';
+    try {
+      await fetch(`${API}/login-complete?telegram_user_id=${tgUserId}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`, { method: 'POST' });
+    } catch(e) { console.log('API notify error:', e); }
+
     await sleep(800);
 
-    // Send data to bot and close Mini App
-    if (tg) {
-      try {
-        tg.sendData(JSON.stringify({ action: 'login_complete', user: name, email: email }));
-      } catch(e) { console.log('sendData error:', e); }
-      await sleep(500);
-      try { tg.close(); } catch(e) { console.log('close error:', e); }
-    }
+    // Try to close Mini App
+    if (tg) { try { tg.close(); } catch(e) {} }
 
-    // Fallback — show "return to chat" message if close didn't work
+    // Fallback if close didn't work
     await sleep(1000);
     document.querySelector('.login-card').innerHTML = `
       <div style="text-align:center;padding:20px">

@@ -39,6 +39,26 @@ async def get_rewards():
     return MOCK_REWARDS
 
 
+# Store login state per user (Mini App writes, bot reads)
+_login_store: dict[str, dict] = {}
+
+
+@router.post("/login-complete")
+async def login_complete(telegram_user_id: str = "", name: str = "", email: str = ""):
+    """Called by Mini App after successful login."""
+    _login_store[telegram_user_id] = {"name": name, "email": email, "done": True}
+    return {"status": "ok"}
+
+
+@router.get("/login-status")
+async def login_status(telegram_user_id: str = ""):
+    """Polled by bot to check if user completed login."""
+    data = _login_store.pop(telegram_user_id, None)
+    if data:
+        return {"done": True, "name": data["name"], "email": data["email"]}
+    return {"done": False}
+
+
 @router.post("/apply")
 async def apply(offer_index: int = 0):
     offer = CREDIT_OFFERS[offer_index] if offer_index < len(CREDIT_OFFERS) else CREDIT_OFFERS[0]
