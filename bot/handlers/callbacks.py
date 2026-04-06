@@ -1,9 +1,10 @@
 """Inline button callback handler — full v9 flow with dummy login."""
 
 import asyncio
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import ContextTypes
 from telegram.constants import ChatAction
+from bot.config import WEBAPP_URL
 from bot.services.session import (
     get_state, set_state, set_selected_offer, get_selected_offer,
 )
@@ -49,9 +50,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=support_keyboard(),
         )
 
-    # ── Auth flow ──
-    elif data == "auth:connect":
-        await _handle_dummy_login(query, user_id)
+    # ── Auth flow — after Mini App login completes ──
+    elif data == "auth:connected":
+        await _handle_post_login(query, user_id)
 
     # ── Offer selection ──
     elif data.startswith("offer:"):
@@ -126,7 +127,8 @@ async def _handle_credit_start(query, user_id: int):
 
     await asyncio.sleep(0.5)
 
-    # Auth card with user info + connect button
+    # Auth card — "Connect with PayPal" opens Mini App login screen
+    login_url = f"{WEBAPP_URL}/webapp#login"
     await query.message.reply_text(
         "🔐 *Connect PayPal*\n"
         "━━━━━━━━━━━━━━━━━\n"
@@ -135,35 +137,14 @@ async def _handle_credit_start(query, user_id: int):
         "📧 arun.sharma@email.com\n",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔐 Connect with PayPal", callback_data="auth:connect")],
+            [InlineKeyboardButton("🔐 Connect with PayPal", web_app=WebAppInfo(url=login_url))],
         ]),
     )
 
 
-# ── STEP 2: Dummy login ──
-async def _handle_dummy_login(query, user_id: int):
-    """Simulate PayPal OAuth login."""
-    await query.message.chat.send_action(ChatAction.TYPING)
-
-    # Step 1: Show "logging in" state
-    await query.message.reply_text(
-        "🔄 _Opening PayPal login..._",
-        parse_mode="Markdown",
-    )
-    await asyncio.sleep(1.5)
-
-    # Step 2: Show login form (simulated)
-    await query.message.reply_text(
-        "🏦 *PayPal Login*\n"
-        "━━━━━━━━━━━━━━━━━\n"
-        "📧 Email: `arun.sharma@email.com`\n"
-        "🔑 Password: `••••••••`\n\n"
-        "_Authenticating..._",
-        parse_mode="Markdown",
-    )
-    await asyncio.sleep(2)
-
-    # Step 3: Connected
+# ── STEP 2: Post Mini App login — continues flow in bot chat ──
+async def _handle_post_login(query, user_id: int):
+    """Called after user logs in via Mini App and taps 'Continue in chat'."""
     await query.message.reply_text(
         "✅ *Connected successfully!*\n\n"
         "👤 Arun Sharma\n"
@@ -173,8 +154,6 @@ async def _handle_dummy_login(query, user_id: int):
         parse_mode="Markdown",
     )
     await asyncio.sleep(1)
-
-    # Step 4: Auto-run NBA scoring
     await _handle_scoring(query, user_id)
 
 

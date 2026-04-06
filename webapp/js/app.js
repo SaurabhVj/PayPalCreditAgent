@@ -5,6 +5,7 @@ if (tg) { tg.ready(); tg.expand(); }
 
 const API = '/api';
 let busy = false, flowState = 'idle', chosenOffer = null;
+let openedForLogin = window.location.hash === '#login';
 
 const OFFERS = [
   { tag:'Best Match', name:'PayPal Pay Later', amt:'$2,500', score:96, detail:'0% APR · 6 months · No annual fee' },
@@ -80,16 +81,21 @@ async function handleLogin() {
   btn.classList.remove('loading');
   btn.classList.add('done');
   await sleep(600);
-  $('loginOverlay').classList.remove('show');
 
-  // Update auth card button
+  // If opened from bot chat (#login), send data back and close
+  if (openedForLogin && tg) {
+    tg.sendData(JSON.stringify({ action: 'login_complete', user: 'Arun Sharma' }));
+    await sleep(300);
+    tg.close();
+    return;
+  }
+
+  // Otherwise continue in Mini App
+  $('loginOverlay').classList.remove('show');
   const acBtn = document.querySelector('.ac-btn');
   if (acBtn) { acBtn.textContent = '✓ Connected'; acBtn.classList.add('done'); }
-
   let r = addBubble('out', 'Connected ✓'); addTs(r, 'out');
   await sleep(400);
-
-  // Continue flow — scoring
   await runScoring();
 }
 
@@ -487,4 +493,12 @@ async function doSend() {
 }
 
 // ── Auto-start ──
-window.addEventListener('load', () => setTimeout(startFlow, 500));
+window.addEventListener('load', () => {
+  if (openedForLogin) {
+    // Opened from bot chat for login only — show login screen directly
+    showLogin();
+  } else {
+    // Normal Mini App — start chat flow
+    setTimeout(startFlow, 500);
+  }
+});

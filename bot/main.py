@@ -12,6 +12,7 @@ from bot.config import TELEGRAM_BOT_TOKEN
 from bot.handlers.commands import start_command, menu_command, help_command, reset_command
 from bot.handlers.callbacks import callback_handler
 from bot.handlers.messages import message_handler
+from bot.handlers.webapp_data import webapp_data_handler
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -31,6 +32,9 @@ def create_bot():
 
     # Callback query handler (inline buttons)
     app.add_handler(CallbackQueryHandler(callback_handler))
+
+    # Mini App data handler (login complete, approval, etc.)
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data_handler))
 
     # Free-text message handler
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
