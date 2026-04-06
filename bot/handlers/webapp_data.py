@@ -26,13 +26,22 @@ async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     action = data.get("action")
 
     if action == "login_complete":
-        # User logged in via Mini App — continue credit flow in bot chat
+        # User logged in via Mini App — use their entered name/email
+        user_name = data.get("user", "User")
+        user_email = data.get("email", "user@email.com")
+
+        # Store in session for later use
+        from bot.services.session import get_session
+        session = get_session(user_id)
+        session["name"] = user_name
+        session["email"] = user_email
+
         await update.message.reply_text(
-            "✅ *Connected successfully!*\n\n"
-            "👤 Arun Sharma\n"
-            "📧 arun.sharma@email.com\n"
-            "🏦 PayPal member: 36 months\n"
-            "💳 Credit band: _prime_",
+            f"✅ *Connected successfully!*\n\n"
+            f"👤 {user_name}\n"
+            f"📧 {user_email}\n"
+            f"🏦 PayPal member: 36 months\n"
+            f"💳 Credit band: _prime_",
             parse_mode="Markdown",
         )
         await asyncio.sleep(1)
@@ -40,7 +49,14 @@ async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         # Run NBA scoring
         await update.message.chat.send_action(ChatAction.TYPING)
         await update.message.reply_text(
-            scoring_message(), parse_mode="Markdown",
+            f"🧠 *Analyzing your profile...*\n\n"
+            f"👤 {user_name}\n"
+            f"📧 {user_email}\n"
+            f"📅 PayPal member: 36 months\n"
+            f"💳 Credit band: _prime_\n"
+            f"💰 Avg monthly spend: $4,200\n\n"
+            f"_Running NBA model..._",
+            parse_mode="Markdown",
         )
         await asyncio.sleep(2.5)
 
@@ -55,7 +71,7 @@ async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         set_state(user_id, FlowState.OFFERS_SHOWN)
         await update.message.reply_text(
-            "🎯 Great news — the NBA Model matched you to *3 personalised offers*.\n"
+            f"🎯 Great news, {user_name} — the NBA Model matched you to *3 personalised offers*.\n"
             "Tap one to learn more:\n\n" + all_offers_message(),
             parse_mode="Markdown",
             reply_markup=offers_keyboard(),

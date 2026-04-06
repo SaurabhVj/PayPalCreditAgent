@@ -84,7 +84,9 @@ async function handleLogin() {
 
   // If opened from bot chat (#login), send data back and close
   if (openedForLogin && tg) {
-    tg.sendData(JSON.stringify({ action: 'login_complete', user: 'Arun Sharma' }));
+    const email = $('loginEmail').value || 'user@email.com';
+    const name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    tg.sendData(JSON.stringify({ action: 'login_complete', user: name, email: email }));
     await sleep(300);
     tg.close();
     return;

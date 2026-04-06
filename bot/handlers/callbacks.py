@@ -132,9 +132,9 @@ async def _handle_credit_start(query, user_id: int):
     await query.message.reply_text(
         "🔐 *Connect PayPal*\n"
         "━━━━━━━━━━━━━━━━━\n"
-        "Sign in to unlock personalised credit offers.\n\n"
-        "👤 *Arun Sharma*\n"
-        "📧 arun.sharma@email.com\n",
+        "Sign in with your PayPal account to unlock\n"
+        "personalised credit offers.\n\n"
+        "🔒 Secure OAuth — we never see your password.",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔐 Connect with PayPal", web_app=WebAppInfo(url=login_url))],
@@ -222,8 +222,11 @@ async def _handle_submit(query, user_id: int):
     o = CREDIT_OFFERS[offer_idx]
     set_state(user_id, FlowState.APPROVED)
 
+    from bot.services.session import get_session
+    user_name = get_session(user_id).get("name", "there")
+
     await query.message.reply_text(
-        f"🎊 *Approved, Arun Sharma!*\n\n"
+        f"🎊 *Approved, {user_name}!*\n\n"
         f"Your *{o['name']}* is active.\n\n"
         f"💳 Credit Limit: *{o['amount']}*\n"
         f"⏱ Decision Time: *3.1 seconds*\n"
