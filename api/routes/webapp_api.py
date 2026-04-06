@@ -48,3 +48,10 @@ async def apply(offer_index: int = 0):
         "limit": offer["amount"],
         "decision_ms": 3100,
     }
+
+
+@router.get("/test-llm")
+async def test_llm(q: str = "recommend a travel card"):
+    from bot.services.llm_service import ask_llm
+    response = await ask_llm(q)
+    return {"query": q, "response": response, "source": "gemini" if response else "fallback"}

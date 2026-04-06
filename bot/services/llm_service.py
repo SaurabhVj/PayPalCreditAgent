@@ -67,7 +67,7 @@ async def ask_llm(user_message: str, conversation_history: list[dict] | None = N
     contents.append({"role": "user", "parts": [{"text": user_message}]})
 
     # Try multiple models in case one has quota issues
-    models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"]
+    models = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"]
 
     for model in models:
         try:
