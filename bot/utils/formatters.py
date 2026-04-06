@@ -37,15 +37,14 @@ def all_offers_message() -> str:
     return "\n".join(lines)
 
 
-def confirm_message(index: int) -> str:
+def confirm_message(index: int, name: str = "User") -> str:
     o = CREDIT_OFFERS[index]
-    u = MOCK_USER
     return (
         f"✅ *Application Ready*\n"
         f"━━━━━━━━━━━━━━━━━\n"
         f"Product: *{o['name']}*\n"
         f"Credit Limit: *{o['amount']}*\n"
-        f"Applicant: {u['name']}\n"
+        f"Applicant: {name}\n"
         f"Channel: Telegram\n"
         f"Decision: _Instant · ~3s_\n\n"
         f"Tap Submit to apply:"

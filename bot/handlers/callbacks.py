@@ -97,8 +97,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "action:card":
+        from bot.services.session import get_session
+        name = get_session(user_id).get("name", "User")
         await query.message.reply_text(
-            _card_manage_message(), parse_mode="Markdown",
+            _card_manage_message(name), parse_mode="Markdown",
             reply_markup=_card_action_keyboard(),
         )
 
@@ -145,12 +147,17 @@ async def _handle_credit_start(query, user_id: int):
 # ── STEP 2: Post Mini App login — continues flow in bot chat ──
 async def _handle_post_login(query, user_id: int):
     """Called after user logs in via Mini App and taps 'Continue in chat'."""
+    from bot.services.session import get_session
+    session = get_session(user_id)
+    name = session.get("name", "User")
+    email = session.get("email", "")
+
     await query.message.reply_text(
-        "✅ *Connected successfully!*\n\n"
-        "👤 Arun Sharma\n"
-        "📧 arun.sharma@email.com\n"
-        "🏦 PayPal member: 36 months\n"
-        "💳 Credit band: _prime_",
+        f"✅ *Connected successfully!*\n\n"
+        f"👤 {name}\n"
+        f"📧 {email}\n"
+        f"🏦 PayPal member: 36 months\n"
+        f"💳 Credit band: _prime_",
         parse_mode="Markdown",
     )
     await asyncio.sleep(1)
@@ -160,9 +167,20 @@ async def _handle_post_login(query, user_id: int):
 # ── STEP 3: NBA Scoring ──
 async def _handle_scoring(query, user_id: int):
     """Run NBA model scoring."""
+    from bot.services.session import get_session
+    session = get_session(user_id)
+    name = session.get("name", "User")
+    email = session.get("email", "")
+
     await query.message.chat.send_action(ChatAction.TYPING)
     await query.message.reply_text(
-        scoring_message(),
+        f"🧠 *Analyzing your profile...*\n\n"
+        f"👤 {name}\n"
+        f"📧 {email}\n"
+        f"📅 PayPal member: 36 months\n"
+        f"💳 Credit band: _prime_\n"
+        f"💰 Avg monthly spend: $4,200\n\n"
+        f"_Running NBA model..._",
         parse_mode="Markdown",
     )
 
@@ -177,10 +195,9 @@ async def _handle_scoring(query, user_id: int):
     )
     await asyncio.sleep(1)
 
-    # Step 5: Show offers
     set_state(user_id, FlowState.OFFERS_SHOWN)
     await query.message.reply_text(
-        "🎯 Great news — the NBA Model matched you to *3 personalised offers*.\n"
+        f"🎯 Great news, {name} — the NBA Model matched you to *3 personalised offers*.\n"
         "Tap one to learn more:\n\n" + all_offers_message(),
         parse_mode="Markdown",
         reply_markup=offers_keyboard(),
@@ -195,12 +212,15 @@ async def _handle_confirm(query, user_id: int):
         await query.message.reply_text("Please select an offer first.")
         return
 
+    from bot.services.session import get_session
+    name = get_session(user_id).get("name", "User")
+
     await query.message.chat.send_action(ChatAction.TYPING)
     await asyncio.sleep(0.8)
 
     await query.message.reply_text(
         "✨ Here's your application summary. Review and tap Submit:\n\n" +
-        confirm_message(offer_idx),
+        confirm_message(offer_idx, name),
         parse_mode="Markdown",
         reply_markup=confirm_keyboard(),
     )
@@ -270,7 +290,7 @@ async def _handle_card_action(query, action: str):
         "freeze": "🧊 *Card Frozen*\n\nYour card has been temporarily frozen. No transactions will be processed.\n\nTap /menu to unfreeze or manage your card.",
         "replace": "🔄 *Replacement Requested*\n\nA new card will arrive in 3-5 business days.\nYour current card remains active until the new one is activated.",
         "report": "⚠️ *Report Filed*\n\nWe've flagged your card for review. Our fraud team will contact you within 24 hours.",
-        "pin": "🔑 *PIN Change*\n\nA PIN change link has been sent to arun.sharma@email.com.\nThe link expires in 15 minutes.",
+        "pin": "🔑 *PIN Change*\n\nA PIN change link has been sent to your registered email.\nThe link expires in 15 minutes.",
     }
     await query.message.reply_text(
         msgs.get(action, "Action completed."),
@@ -319,13 +339,13 @@ def _card_action_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-def _card_manage_message() -> str:
+def _card_manage_message(name: str = "User") -> str:
     return (
         "🃏 *Card Management*\n"
         "━━━━━━━━━━━━━━━━━\n\n"
         "💳 *Virtual Card*\n"
         "Card: `•••• •••• •••• 4821`\n"
-        "Holder: ARUN SHARMA\n"
+        f"Holder: {name.upper()}\n"
         "Expiry: 09/28\n"
         "Type: PayPal Pay Later\n\n"
         "📊 *Spending Limit*\n"

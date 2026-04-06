@@ -71,11 +71,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif intent == "card_manage":
+        from bot.services.session import get_session
+        name = get_session(user_id).get("name", "User")
         await update.message.reply_text(
             "🃏 *Card Management*\n"
             "━━━━━━━━━━━━━━━━━\n"
             "Card: •••• •••• •••• 4821\n"
-            "Holder: ARUN SHARMA\n"
+            f"Holder: {name.upper()}\n"
             "Expiry: 09/28\n\n"
             "*Controls:*\n"
             "🌐 Online: ✅ | ✈️ Intl: ❌ | 📱 Tap: ✅ | 🔔 Alerts: ✅",

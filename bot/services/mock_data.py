@@ -1,9 +1,9 @@
 """Mock data for demo — replaces real PayPal API calls."""
 
 MOCK_USER = {
-    "name": "Arun Sharma",
-    "email": "arun.sharma@email.com",
-    "initials": "AS",
+    "name": "",  # Set dynamically from login
+    "email": "",  # Set dynamically from login
+    "initials": "",
     "tenure_months": 36,
     "credit_band": "prime",
     "monthly_spend": 4200,
@@ -34,7 +34,7 @@ MOCK_CARD = {
     "number_full": "4821 0043 8812 4821",
     "cvv_masked": "•••",
     "cvv_full": "847",
-    "holder": "ARUN SHARMA",
+    "holder": "",  # Set dynamically from login
     "expiry": "09/28",
     "product": "PayPal Pay Later",
     "controls": {

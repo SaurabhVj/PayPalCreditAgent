@@ -5,6 +5,7 @@ if (tg) { tg.ready(); tg.expand(); }
 
 const API = '/api';
 let busy = false, flowState = 'idle', chosenOffer = null;
+let userName = '', userEmail = '';
 // Check if opened for login — hash may come as #login or encoded
 let openedForLogin = window.location.hash.includes('login') ||
                      window.location.href.includes('#login') ||
@@ -117,7 +118,11 @@ async function handleLogin() {
     return;
   }
 
-  // Otherwise continue in Mini App
+  // Otherwise continue in Mini App — store user info
+  const emailVal = $('loginEmail').value || 'user@email.com';
+  userName = emailVal.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  userEmail = emailVal;
+
   $('loginOverlay').classList.remove('show');
   const acBtn = document.querySelector('.ac-btn');
   if (acBtn) { acBtn.textContent = '✓ Connected'; acBtn.classList.add('done'); }
@@ -175,7 +180,7 @@ function buildCardManage() {
       <div class="vc-top"><div class="vc-brand">PayPal</div><div class="vc-type">CREDIT</div></div>
       <div class="vc-num" id="vcNum">•••• •••• •••• 4821</div>
       <div class="vc-bot">
-        <div><div class="vc-label">CARDHOLDER</div><div class="vc-val">ARUN SHARMA</div></div>
+        <div><div class="vc-label">CARDHOLDER</div><div class="vc-val">${(userName || 'USER').toUpperCase()}</div></div>
         <div><div class="vc-label">EXPIRES</div><div class="vc-val">09/28</div></div>
       </div>
     </div>
@@ -230,7 +235,8 @@ async function startFlow() {
   busy = true; flowState = 'greeted';
 
   showTyping(); await sleep(1100); rmTyping();
-  let r = addBubble('inc', '👋 Hi Arun Sharma! I\'m your PayPal assistant.<br>What can I help you with today?');
+  const tgName = tg?.initDataUnsafe?.user?.first_name || 'there';
+  let r = addBubble('inc', `👋 Hi ${tgName}! I'm your PayPal assistant.<br>What can I help you with today?`);
   addTs(r, 'inc');
   await sleep(300);
   showTopicMenu();
@@ -274,7 +280,6 @@ async function startCredit() {
     <div class="ac-hd"><svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M19.5 6.5C19.5 9.54 17.04 12 14 12H9.5L8 19H4.5L7 6.5H14Z" fill="#60CDFF"/><path d="M20 4C20 7.04 17.54 9.5 14.5 9.5H10L8.5 16.5H5L7.5 4H14.5Z" fill="white" opacity="0.3"/></svg><span>Connect PayPal</span></div>
     <div class="ac-body">
       <div class="ac-desc">Sign in to unlock personalised credit offers.</div>
-      <div class="ac-user"><div class="ac-av">A</div><div><div class="ac-name">Arun Sharma</div><div class="ac-email">arun.sharma@email.com</div></div></div>
       <button class="ac-btn" onclick="showLogin()">🔐 Connect with PayPal</button>
     </div>
   </div>`;
@@ -347,7 +352,7 @@ async function proceedApply() {
     <div class="cc-rows">
       <div class="cc-row"><span class="l">Product</span><span class="v">${o.name}</span></div>
       <div class="cc-row"><span class="l">Limit</span><span class="v">${o.amt}</span></div>
-      <div class="cc-row"><span class="l">Applicant</span><span class="v">Arun Sharma</span></div>
+      <div class="cc-row"><span class="l">Applicant</span><span class="v">${userName || 'User'}</span></div>
       <div class="cc-row"><span class="l">Via</span><span class="v">Telegram</span></div>
       <div class="cc-row"><span class="l">Decision</span><span class="v hi">Instant · ~3s</span></div>
     </div>
@@ -368,7 +373,7 @@ async function handleSubmit() {
 
   const o = OFFERS[chosenOffer];
   showTyping(); await sleep(1200); rmTyping();
-  let r = addBubble('inc', `🎊 <b>Approved, Arun Sharma!</b><br>Your <b>${o.name}</b> is active. Credit limit: <b>${o.amt}</b>.<br>Decision time: 3.1 seconds.`);
+  let r = addBubble('inc', `🎊 <b>Approved, ${userName || 'User'}!</b><br>Your <b>${o.name}</b> is active. Credit limit: <b>${o.amt}</b>.<br>Decision time: 3.1 seconds.`);
   addTs(r, 'inc');
   await sleep(600);
   showTyping(); await sleep(700); rmTyping();
