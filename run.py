@@ -14,11 +14,18 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
+    # Wait for old instance to shut down (Render zero-downtime deploy overlap)
+    logger.info("Waiting 10s for old instance to release polling...")
+    await asyncio.sleep(10)
+
     # Start bot
     bot_app = create_bot()
     await bot_app.initialize()
     await bot_app.start()
-    await bot_app.updater.start_polling(drop_pending_updates=True)
+    await bot_app.updater.start_polling(
+        drop_pending_updates=True,
+        allowed_updates=["message", "callback_query"],
+    )
     logger.info("Telegram bot started (polling mode)")
 
     # Start FastAPI
