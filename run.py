@@ -2,9 +2,11 @@
 
 import asyncio
 import logging
+import os
 import uvicorn
+import httpx
 from bot.main import create_bot
-from bot.config import TELEGRAM_BOT_TOKEN, API_PORT
+from bot.config import TELEGRAM_BOT_TOKEN, API_PORT, WEBAPP_URL
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -38,12 +40,28 @@ async def main():
     server = uvicorn.Server(config)
     logger.info(f"FastAPI server starting on port {API_PORT}")
 
+    # Start self-ping to keep Render free tier awake
+    asyncio.create_task(keep_alive())
+
     try:
         await server.serve()
     finally:
         await bot_app.updater.stop()
         await bot_app.stop()
         await bot_app.shutdown()
+
+
+async def keep_alive():
+    """Ping own health endpoint every 10 min to prevent Render free tier sleep."""
+    url = f"{WEBAPP_URL}/api/health" if WEBAPP_URL.startswith("http") else f"http://localhost:{API_PORT}/api/health"
+    while True:
+        await asyncio.sleep(600)  # 10 minutes
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(url)
+                logger.info(f"Keep-alive ping: {resp.status_code}")
+        except Exception as e:
+            logger.warning(f"Keep-alive failed: {e}")
 
 
 if __name__ == "__main__":
