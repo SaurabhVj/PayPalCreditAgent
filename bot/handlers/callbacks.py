@@ -128,7 +128,7 @@ async def _handle_credit_start(query, user_id: int):
     await asyncio.sleep(0.5)
 
     # Auth card — "Connect with PayPal" opens Mini App login screen
-    login_url = f"{WEBAPP_URL}/webapp#login"
+    login_url = f"{WEBAPP_URL}/webapp?mode=login"
     await query.message.reply_text(
         "🔐 *Connect PayPal*\n"
         "━━━━━━━━━━━━━━━━━\n"

