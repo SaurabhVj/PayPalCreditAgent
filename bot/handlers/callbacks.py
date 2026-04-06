@@ -131,6 +131,11 @@ async def _handle_credit_start(query, user_id: int):
 
     # Auth card — "Connect with PayPal" opens Mini App login screen
     login_url = f"{WEBAPP_URL}/webapp?mode=login"
+
+    # Store that this user is in auth flow
+    from bot.services.session import get_session
+    get_session(user_id)["awaiting_login"] = True
+
     await query.message.reply_text(
         "🔐 *Connect PayPal*\n"
         "━━━━━━━━━━━━━━━━━\n"

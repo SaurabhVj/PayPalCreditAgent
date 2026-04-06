@@ -35,21 +35,25 @@ async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         session = get_session(user_id)
         session["name"] = user_name
         session["email"] = user_email
+        session["awaiting_login"] = False
 
+        # Show connected confirmation
         await update.message.reply_text(
-            f"✅ *Connected successfully!*\n\n"
-            f"👤 {user_name}\n"
+            f"✅ *PayPal account connected!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 *{user_name}*\n"
             f"📧 {user_email}\n"
             f"🏦 PayPal member: 36 months\n"
-            f"💳 Credit band: _prime_",
+            f"💳 Credit band: _prime_\n\n"
+            f"_Starting credit assessment..._",
             parse_mode="Markdown",
         )
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.5)
 
         # Run NBA scoring
         await update.message.chat.send_action(ChatAction.TYPING)
         await update.message.reply_text(
-            f"🧠 *Analyzing your profile...*\n\n"
+            f"🧠 *Analyzing {user_name}'s profile...*\n\n"
             f"👤 {user_name}\n"
             f"📧 {user_email}\n"
             f"📅 PayPal member: 36 months\n"
