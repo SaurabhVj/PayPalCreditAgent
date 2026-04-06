@@ -1,8 +1,11 @@
 """LLM service — Google Gemini integration for natural conversation."""
 
 import json
+import logging
 import httpx
 from bot.config import GEMINI_API_KEY
+
+logger = logging.getLogger(__name__)
 from bot.services.mock_data import MOCK_USER, MOCK_BALANCE, MOCK_TRANSACTIONS, MOCK_REWARDS
 from bot.models.offers import CREDIT_OFFERS
 
@@ -63,23 +66,34 @@ async def ask_llm(user_message: str, conversation_history: list[dict] | None = N
     # Add current message
     contents.append({"role": "user", "parts": [{"text": user_message}]})
 
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                f"{GEMINI_URL}?key={GEMINI_API_KEY}",
-                json={
-                    "contents": contents,
-                    "generationConfig": {
-                        "temperature": 0.7,
-                        "maxOutputTokens": 300,
-                    }
-                },
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
-                return text.strip()
-            else:
-                return None  # Fallback to regex
-    except Exception:
-        return None  # Fallback to regex
+    # Try multiple models in case one has quota issues
+    models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-8b"]
+
+    for model in models:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    url,
+                    json={
+                        "contents": contents,
+                        "generationConfig": {
+                            "temperature": 0.7,
+                            "maxOutputTokens": 300,
+                        }
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    logger.info(f"Gemini ({model}) responded successfully")
+                    return text.strip()
+                else:
+                    logger.warning(f"Gemini ({model}) returned {resp.status_code}: {resp.text[:200]}")
+                    continue  # Try next model
+        except Exception as e:
+            logger.error(f"Gemini ({model}) error: {e}")
+            continue
+
+    logger.warning("All Gemini models failed, falling back to regex")
+    return None
