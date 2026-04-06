@@ -1,7 +1,7 @@
-"""Inline button callback handler."""
+"""Inline button callback handler — full v9 flow with dummy login."""
 
 import asyncio
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.constants import ChatAction
 from bot.services.session import (
@@ -29,11 +29,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ── Topic selections ──
     if data == "topic:credit":
-        await _handle_credit_flow(query, user_id)
+        await _handle_credit_start(query, user_id)
 
     elif data == "topic:balance":
         await query.message.reply_text(
             balance_message(), parse_mode="Markdown",
+            reply_markup=_post_balance_keyboard(),
         )
 
     elif data == "topic:rewards":
@@ -48,25 +49,43 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=support_keyboard(),
         )
 
+    # ── Auth flow ──
+    elif data == "auth:connect":
+        await _handle_dummy_login(query, user_id)
+
     # ── Offer selection ──
     elif data.startswith("offer:"):
         index = int(data.split(":")[1])
         set_selected_offer(user_id, index)
         set_state(user_id, FlowState.SELECTED)
+
+        o = CREDIT_OFFERS[index]
         await query.message.reply_text(
-            confirm_message(index),
+            f"*{o['name']}*\n"
+            f"━━━━━━━━━━━━━━━━━\n"
+            f"💳 Credit Limit: *{o['amount']}*\n"
+            f"📋 {o['detail']}\n"
+            f"📊 Match Score: *{o['score']}%*\n"
+            f"🏷 _{o['tag']}_\n\n"
+            f"Would you like to go ahead?",
             parse_mode="Markdown",
-            reply_markup=confirm_keyboard(),
+            reply_markup=_offer_action_keyboard(),
         )
 
-    # ── Actions ──
+    # ── Offer actions ──
+    elif data == "action:apply_now":
+        await _handle_confirm(query, user_id)
+
+    elif data == "action:tell_more":
+        await _handle_tell_more(query, user_id)
+
     elif data == "action:submit":
         await _handle_submit(query, user_id)
 
     elif data == "action:back_offers":
         set_state(user_id, FlowState.OFFERS_SHOWN)
         await query.message.reply_text(
-            all_offers_message(),
+            "Of course! Here are all three options again:\n\n" + all_offers_message(),
             parse_mode="Markdown",
             reply_markup=offers_keyboard(),
         )
@@ -79,33 +98,137 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "action:card":
         await query.message.reply_text(
             _card_manage_message(), parse_mode="Markdown",
+            reply_markup=_card_action_keyboard(),
         )
+
+    # ── Card actions ──
+    elif data.startswith("card:"):
+        await _handle_card_action(query, data.split(":")[1])
 
     # ── Support ──
     elif data.startswith("support:"):
         await _handle_support(query, data.split(":")[1])
 
 
-async def _handle_credit_flow(query, user_id: int):
-    """Start the credit application flow."""
-    # Step: Scoring
+# ── STEP 1: Show auth card ──
+async def _handle_credit_start(query, user_id: int):
+    """Show the Connect PayPal auth card."""
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await asyncio.sleep(1)
+
+    await query.message.reply_text(
+        "Great choice! Our NBA Model will match you to the best credit "
+        "product based on your PayPal profile.\n\n"
+        "First, let me securely connect your PayPal account. "
+        "This uses OAuth — I never see your password. 🔒",
+        parse_mode="Markdown",
+    )
+
+    await asyncio.sleep(0.5)
+
+    # Auth card with user info + connect button
+    await query.message.reply_text(
+        "🔐 *Connect PayPal*\n"
+        "━━━━━━━━━━━━━━━━━\n"
+        "Sign in to unlock personalised credit offers.\n\n"
+        "👤 *Arun Sharma*\n"
+        "📧 arun.sharma@email.com\n",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔐 Connect with PayPal", callback_data="auth:connect")],
+        ]),
+    )
+
+
+# ── STEP 2: Dummy login ──
+async def _handle_dummy_login(query, user_id: int):
+    """Simulate PayPal OAuth login."""
+    await query.message.chat.send_action(ChatAction.TYPING)
+
+    # Step 1: Show "logging in" state
+    await query.message.reply_text(
+        "🔄 _Opening PayPal login..._",
+        parse_mode="Markdown",
+    )
+    await asyncio.sleep(1.5)
+
+    # Step 2: Show login form (simulated)
+    await query.message.reply_text(
+        "🏦 *PayPal Login*\n"
+        "━━━━━━━━━━━━━━━━━\n"
+        "📧 Email: `arun.sharma@email.com`\n"
+        "🔑 Password: `••••••••`\n\n"
+        "_Authenticating..._",
+        parse_mode="Markdown",
+    )
+    await asyncio.sleep(2)
+
+    # Step 3: Connected
+    await query.message.reply_text(
+        "✅ *Connected successfully!*\n\n"
+        "👤 Arun Sharma\n"
+        "📧 arun.sharma@email.com\n"
+        "🏦 PayPal member: 36 months\n"
+        "💳 Credit band: _prime_",
+        parse_mode="Markdown",
+    )
+    await asyncio.sleep(1)
+
+    # Step 4: Auto-run NBA scoring
+    await _handle_scoring(query, user_id)
+
+
+# ── STEP 3: NBA Scoring ──
+async def _handle_scoring(query, user_id: int):
+    """Run NBA model scoring."""
     await query.message.chat.send_action(ChatAction.TYPING)
     await query.message.reply_text(
         scoring_message(),
         parse_mode="Markdown",
     )
 
-    # Simulate NBA model processing
-    await asyncio.sleep(2)
+    await asyncio.sleep(2.5)
 
+    await query.message.reply_text(
+        "✅ *NBA Model complete!*\n"
+        "📊 Offers matched: *3*\n"
+        "⏱ Decision time: *2.8 seconds*\n"
+        "🧠 Model: _nba-credit-v4.1_",
+        parse_mode="Markdown",
+    )
+    await asyncio.sleep(1)
+
+    # Step 5: Show offers
     set_state(user_id, FlowState.OFFERS_SHOWN)
     await query.message.reply_text(
-        all_offers_message(),
+        "🎯 Great news — the NBA Model matched you to *3 personalised offers*.\n"
+        "Tap one to learn more:\n\n" + all_offers_message(),
         parse_mode="Markdown",
         reply_markup=offers_keyboard(),
     )
 
 
+# ── STEP 4: Confirm application ──
+async def _handle_confirm(query, user_id: int):
+    """Show application confirmation card."""
+    offer_idx = get_selected_offer(user_id)
+    if offer_idx is None:
+        await query.message.reply_text("Please select an offer first.")
+        return
+
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await asyncio.sleep(0.8)
+
+    await query.message.reply_text(
+        "✨ Here's your application summary. Review and tap Submit:\n\n" +
+        confirm_message(offer_idx),
+        parse_mode="Markdown",
+        reply_markup=confirm_keyboard(),
+    )
+    set_state(user_id, FlowState.CONFIRMED)
+
+
+# ── STEP 5: Submit + Approve ──
 async def _handle_submit(query, user_id: int):
     """Process application submission."""
     offer_idx = get_selected_offer(user_id)
@@ -113,16 +236,63 @@ async def _handle_submit(query, user_id: int):
         await query.message.reply_text("Please select an offer first.")
         return
 
-    # Simulate processing
     await query.message.chat.send_action(ChatAction.TYPING)
     await query.message.reply_text("⏳ _Processing your application..._", parse_mode="Markdown")
-    await asyncio.sleep(2)
+    await asyncio.sleep(2.5)
 
+    o = CREDIT_OFFERS[offer_idx]
     set_state(user_id, FlowState.APPROVED)
+
     await query.message.reply_text(
-        approval_message(offer_idx),
+        f"🎊 *Approved, Arun Sharma!*\n\n"
+        f"Your *{o['name']}* is active.\n\n"
+        f"💳 Credit Limit: *{o['amount']}*\n"
+        f"⏱ Decision Time: *3.1 seconds*\n"
+        f"📋 Status: _Active_\n\n"
+        f"📲 All done inside Telegram — no app downloads, no redirects. "
+        f"That's Agentic Commerce.\n\n"
+        f"What would you like to do next?",
         parse_mode="Markdown",
         reply_markup=post_approval_keyboard(),
+    )
+
+
+async def _handle_tell_more(query, user_id: int):
+    """Show more details about the selected offer."""
+    offer_idx = get_selected_offer(user_id)
+    if offer_idx is None:
+        return
+    o = CREDIT_OFFERS[offer_idx]
+
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await asyncio.sleep(1)
+
+    await query.message.reply_text(
+        f"Here's what to know about *{o['name']}*:\n\n"
+        f"✅ *Instant decision* — know in under 4 seconds\n"
+        f"🔒 *No hard credit pull* to check eligibility\n"
+        f"📱 *Digital-first* — manage entirely in PayPal\n"
+        f"🛡 *Buyer Protection* included on all purchases\n"
+        f"💸 *{o['detail']}*\n\n"
+        f"Ready to proceed?",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Yes, apply now", callback_data="action:apply_now")],
+            [InlineKeyboardButton("← See other offers", callback_data="action:back_offers")],
+        ]),
+    )
+
+
+async def _handle_card_action(query, action: str):
+    msgs = {
+        "freeze": "🧊 *Card Frozen*\n\nYour card has been temporarily frozen. No transactions will be processed.\n\nTap /menu to unfreeze or manage your card.",
+        "replace": "🔄 *Replacement Requested*\n\nA new card will arrive in 3-5 business days.\nYour current card remains active until the new one is activated.",
+        "report": "⚠️ *Report Filed*\n\nWe've flagged your card for review. Our fraud team will contact you within 24 hours.",
+        "pin": "🔑 *PIN Change*\n\nA PIN change link has been sent to arun.sharma@email.com.\nThe link expires in 15 minutes.",
+    }
+    await query.message.reply_text(
+        msgs.get(action, "Action completed."),
+        parse_mode="Markdown",
     )
 
 
@@ -139,19 +309,49 @@ async def _handle_support(query, action: str):
     )
 
 
+def _offer_action_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Yes, apply now", callback_data="action:apply_now")],
+        [InlineKeyboardButton("ℹ️ Tell me more", callback_data="action:tell_more")],
+        [InlineKeyboardButton("← See other offers", callback_data="action:back_offers")],
+    ])
+
+
+def _post_balance_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📋 View Statement", callback_data="action:statement")],
+        [InlineKeyboardButton("🃏 Manage Card", callback_data="action:card")],
+    ])
+
+
+def _card_action_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🧊 Freeze", callback_data="card:freeze"),
+            InlineKeyboardButton("🔄 Replace", callback_data="card:replace"),
+        ],
+        [
+            InlineKeyboardButton("⚠️ Report", callback_data="card:report"),
+            InlineKeyboardButton("🔑 PIN", callback_data="card:pin"),
+        ],
+    ])
+
+
 def _card_manage_message() -> str:
     return (
         "🃏 *Card Management*\n"
-        "━━━━━━━━━━━━━━━━━\n"
-        "Card: •••• •••• •••• 4821\n"
+        "━━━━━━━━━━━━━━━━━\n\n"
+        "💳 *Virtual Card*\n"
+        "Card: `•••• •••• •••• 4821`\n"
         "Holder: ARUN SHARMA\n"
         "Expiry: 09/28\n"
         "Type: PayPal Pay Later\n\n"
+        "📊 *Spending Limit*\n"
+        "Used: $847.23 of $2,500 (33.9%)\n"
+        "▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░ 33.9%\n\n"
         "*Controls:*\n"
         "🌐 Online Purchases: ✅ On\n"
         "✈️ International: ❌ Off\n"
         "📱 Contactless: ✅ On\n"
-        "🔔 Spend Alerts: ✅ On\n\n"
-        "*Quick Actions:*\n"
-        "🧊 Freeze | 🔄 Replace | ⚠️ Report | 🔑 PIN"
+        "🔔 Spend Alerts: ✅ On"
     )
