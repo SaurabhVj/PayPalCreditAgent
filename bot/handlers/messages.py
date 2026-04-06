@@ -120,8 +120,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     else:
-        # No intent matched — fallback
-        await update.message.reply_text(
-            "I'm not sure I understand. Here's what I can help with:",
-            reply_markup=main_menu_keyboard(),
-        )
+        # No intent matched — try LLM
+        from bot.services.llm_service import ask_llm
+        llm_response = await ask_llm(text)
+        if llm_response:
+            await update.message.reply_text(llm_response)
+        else:
+            await update.message.reply_text(
+                "I'm not sure I understand. Here's what I can help with:",
+                reply_markup=main_menu_keyboard(),
+            )
