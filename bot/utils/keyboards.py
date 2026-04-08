@@ -10,7 +10,7 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton("💳 Apply for Credit", callback_data="topic:credit"),
-            InlineKeyboardButton("💰 Check Balance", callback_data="topic:balance"),
+            InlineKeyboardButton("🎁 View Rewards", callback_data="topic:rewards"),
         ],
         [
             InlineKeyboardButton("📊 Credit Portfolio", callback_data="topic:portfolio"),

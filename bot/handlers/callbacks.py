@@ -41,6 +41,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=_post_balance_keyboard(),
         )
 
+    elif data == "topic:rewards":
+        from bot.utils.formatters import rewards_message
+        await query.message.reply_text(rewards_message(), parse_mode="Markdown")
+
     elif data == "topic:portfolio":
         await _handle_portfolio(query)
 
