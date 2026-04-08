@@ -269,7 +269,7 @@ async function startCredit() {
   let r = addBubble('out', 'Apply for Credit'); addTs(r, 'out');
   await sleep(400);
   showTyping(); await sleep(1000); rmTyping();
-  addBubble('inc', 'Great choice! Our NBA Model will match you to the best credit product based on your PayPal profile.<br><br>First, let me securely connect your PayPal account. This uses OAuth — I never see your password. 🔒');
+  addBubble('inc', 'Great choice! I\'ll find the best credit product personalised for you.<br><br>First, let me securely connect your PayPal account. 🔒');
   await sleep(300);
 
   // Auth card
@@ -290,11 +290,11 @@ async function startCredit() {
 async function runScoring() {
   busy = true;
   showTyping(); await sleep(1400); rmTyping();
-  addBubble('inc', '⚡ Scoring your profile with the NBA Model...');
+  addBubble('inc', '🔍 Analyzing your profile to find the best offers...');
   await sleep(1800);
   showTyping(); await sleep(800); rmTyping();
 
-  let r = addBubble('inc', '🎯 Great news — the NBA Model matched you to <b>3 personalised offers</b>.<br>Tap one to learn more:');
+  let r = addBubble('inc', '🎯 Great news — we found <b>3 personalised offers</b> for you.<br>Tap one to learn more:');
   addTs(r, 'inc');
   await sleep(250);
 

@@ -120,10 +120,9 @@ async def _handle_credit_start(query, user_id: int):
     await asyncio.sleep(1)
 
     await query.message.reply_text(
-        "Great choice! Our NBA Model will match you to the best credit "
-        "product based on your PayPal profile.\n\n"
-        "First, let me securely connect your PayPal account. "
-        "This uses OAuth — I never see your password. 🔒",
+        "Great choice! I'll find the best credit product "
+        "personalised for you.\n\n"
+        "First, let me securely connect your PayPal account. 🔒",
         parse_mode="Markdown",
     )
 
@@ -168,40 +167,35 @@ async def _handle_post_login(query, user_id: int):
     await _handle_scoring(query, user_id)
 
 
-# ── STEP 3: NBA Scoring ──
+# ── STEP 3: Scoring ──
 async def _handle_scoring(query, user_id: int):
-    """Run NBA model scoring."""
+    """Analyze profile and present offers."""
     from bot.services.session import get_session
     session = get_session(user_id)
     name = session.get("name", "User")
-    email = session.get("email", "")
 
     await query.message.chat.send_action(ChatAction.TYPING)
     await query.message.reply_text(
-        f"🧠 *Analyzing your profile...*\n\n"
-        f"👤 {name}\n"
-        f"📧 {email}\n"
-        f"📅 PayPal member: 36 months\n"
-        f"💳 Credit band: _prime_\n"
-        f"💰 Avg monthly spend: $4,200\n\n"
-        f"_Running NBA model..._",
+        f"🔍 *Analyzing your profile...*\n\n"
+        f"Reviewing your PayPal history to find the\n"
+        f"best credit products for you.\n\n"
+        f"_This will only take a moment..._",
         parse_mode="Markdown",
     )
 
     await asyncio.sleep(2.5)
 
     await query.message.reply_text(
-        "✅ *NBA Model complete!*\n"
+        "✅ *Analysis complete!*\n"
         "📊 Offers matched: *3*\n"
-        "⏱ Decision time: *2.8 seconds*\n"
-        "🧠 Model: _nba-credit-v4.1_",
+        "⏱ Response time: *2.8 seconds*",
         parse_mode="Markdown",
     )
     await asyncio.sleep(1)
 
     set_state(user_id, FlowState.OFFERS_SHOWN)
     await query.message.reply_text(
-        f"🎯 Great news, {name} — the NBA Model matched you to *3 personalised offers*.\n"
+        f"🎯 Great news, {name} — we found *3 personalised offers* for you.\n"
         "Tap one to learn more:\n\n" + all_offers_message(),
         parse_mode="Markdown",
         reply_markup=offers_keyboard(),

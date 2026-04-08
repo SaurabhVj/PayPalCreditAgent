@@ -50,32 +50,28 @@ async def webapp_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         await asyncio.sleep(1.5)
 
-        # Run NBA scoring
+        # Analyze profile
         await update.message.chat.send_action(ChatAction.TYPING)
         await update.message.reply_text(
-            f"🧠 *Analyzing {user_name}'s profile...*\n\n"
-            f"👤 {user_name}\n"
-            f"📧 {user_email}\n"
-            f"📅 PayPal member: 36 months\n"
-            f"💳 Credit band: _prime_\n"
-            f"💰 Avg monthly spend: $4,200\n\n"
-            f"_Running NBA model..._",
+            f"🔍 *Analyzing your profile...*\n\n"
+            f"Reviewing your PayPal history to find the\n"
+            f"best credit products for you.\n\n"
+            f"_This will only take a moment..._",
             parse_mode="Markdown",
         )
         await asyncio.sleep(2.5)
 
         await update.message.reply_text(
-            "✅ *NBA Model complete!*\n"
+            "✅ *Analysis complete!*\n"
             "📊 Offers matched: *3*\n"
-            "⏱ Decision time: *2.8 seconds*\n"
-            "🧠 Model: _nba-credit-v4.1_",
+            "⏱ Response time: *2.8 seconds*",
             parse_mode="Markdown",
         )
         await asyncio.sleep(1)
 
         set_state(user_id, FlowState.OFFERS_SHOWN)
         await update.message.reply_text(
-            f"🎯 Great news, {user_name} — the NBA Model matched you to *3 personalised offers*.\n"
+            f"🎯 Great news, {user_name} — we found *3 personalised offers* for you.\n"
             "Tap one to learn more:\n\n" + all_offers_message(),
             parse_mode="Markdown",
             reply_markup=offers_keyboard(),

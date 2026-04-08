@@ -108,7 +108,7 @@ def scoring_message() -> str:
         f"👤 {u['name']}\n"
         f"📧 {u['email']}\n"
         f"📅 PayPal member: {u['tenure_months']} months\n"
-        f"💳 Credit band: _{u['credit_band']}_\n"
+        f"💳 Eligibility: _Pre-qualified_\n"
         f"💰 Avg monthly spend: ${u['monthly_spend']:,}\n\n"
-        f"_Running NBA model..._"
+        f"_This will only take a moment..._"
     )
