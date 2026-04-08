@@ -151,11 +151,15 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(collections_plan_confirmed(plan), parse_mode="Markdown")
 
     # ── Proactive offer response ──
-    elif data == "proactive:yes":
-        await _handle_credit_start(query, user_id)
+    elif data.startswith("proactive:yes"):
+        pattern = data.split(":")[2] if len(data.split(":")) > 2 else "travel"
+        await _handle_proactive_offer(query, user_id, pattern)
 
     elif data == "proactive:no":
         await query.message.reply_text("No worries! I'll be here if you change your mind. 😊")
+
+    elif data == "proactive:apply":
+        await _handle_credit_start(query, user_id)
 
 
 # ── STEP 1: Show auth card ──
@@ -380,6 +384,80 @@ def _card_action_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("🔑 PIN", callback_data="card:pin"),
         ],
     ])
+
+
+async def _handle_proactive_offer(query, user_id: int, pattern: str):
+    """Show a targeted product card based on the transaction pattern."""
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await asyncio.sleep(1)
+
+    offers = {
+        "travel": {
+            "name": "PayPal Miles+",
+            "limit": "$22,000",
+            "highlight": "75,000 sign-up miles",
+            "details": (
+                "✈️ *PayPal Miles+*\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "💳 Credit Limit: *$22,000*\n"
+                "🎁 Sign-up Bonus: *75,000 miles*\n"
+                "✈️ Earn Rate: *3x miles on travel*\n"
+                "🍽 Dining: *2x miles*\n"
+                "🏦 Annual Fee: *$99* (waived Year 1)\n"
+                "💱 FX Fees: *None*\n"
+                "🛋 Lounge Access: *Priority Pass included*\n\n"
+                "Based on your travel spending, you'd earn\n"
+                "approximately *$412/year* in rewards.\n\n"
+                "Want to apply? I can pre-fill 90% of the form."
+            ),
+        },
+        "baby": {
+            "name": "PayPal Family Rewards",
+            "limit": "$30,000",
+            "highlight": "5% childcare cashback",
+            "details": (
+                "👶 *PayPal Family Rewards*\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "💳 Credit Limit: *$30,000*\n"
+                "🍼 Childcare: *5% cashback* (up to $5,000/mo)\n"
+                "🛒 Groceries: *3% cashback* unlimited\n"
+                "👶 Baby Stores: *4% at partner retailers*\n"
+                "🏦 Annual Fee: *$0* first year\n\n"
+                "Based on your family spending patterns,\n"
+                "you'd earn approximately *$1,500/year* in cashback.\n\n"
+                "Want to apply? I can pre-fill 90% of the form."
+            ),
+        },
+        "dining": {
+            "name": "PayPal Cashback Mastercard",
+            "limit": "$5,000",
+            "highlight": "3% dining cashback",
+            "details": (
+                "🍽 *PayPal Cashback Mastercard*\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "💳 Credit Limit: *$5,000*\n"
+                "🍽 Dining: *3% cashback*\n"
+                "🛒 Everything else: *2% cashback*\n"
+                "🏦 Annual Fee: *$0 forever*\n\n"
+                "Based on your dining spending,\n"
+                "you'd earn approximately *$84/year* in dining cashback\n"
+                "plus *$172/year* on other purchases.\n\n"
+                "Want to apply? I can pre-fill 90% of the form."
+            ),
+        },
+    }
+
+    offer = offers.get(pattern, offers["travel"])
+
+    await query.message.reply_text(
+        offer["details"],
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Yes, apply now", callback_data="proactive:apply")],
+            [InlineKeyboardButton("ℹ️ Compare with other cards", callback_data="topic:portfolio")],
+            [InlineKeyboardButton("❌ Maybe later", callback_data="proactive:no")],
+        ]),
+    )
 
 
 async def _handle_portfolio(query):

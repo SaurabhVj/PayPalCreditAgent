@@ -76,8 +76,8 @@ def collections_plan_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-def proactive_keyboard() -> InlineKeyboardMarkup:
+def proactive_keyboard(pattern: str = "travel") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ Yes, show me", callback_data="proactive:yes")],
+        [InlineKeyboardButton("✅ Yes, show me", callback_data=f"proactive:yes:{pattern}")],
         [InlineKeyboardButton("❌ Not right now", callback_data="proactive:no")],
     ])

@@ -166,7 +166,7 @@ async def proactive_loop(bot):
                             chat_id=chat_id,
                             text=msg,
                             parse_mode="Markdown",
-                            reply_markup=proactive_keyboard(),
+                            reply_markup=proactive_keyboard(trigger["pattern"]),
                         )
                         mark_processed(username, trigger["index"])
                         logger.info(f"Proactive offer sent to @{username} (pattern: {trigger['pattern']})")
