@@ -75,3 +75,51 @@ async def test_llm(q: str = "recommend a travel card"):
     from bot.services.llm_service import ask_llm
     response = await ask_llm(q)
     return {"query": q, "response": response, "source": "gemini" if response else "fallback"}
+
+
+@router.post("/form-complete")
+async def form_complete(telegram_user_id: str = "", name: str = "", pan: str = ""):
+    """Called by Mini App after form submission."""
+    _login_store[f"form_{telegram_user_id}"] = {"name": name, "pan": pan, "done": True}
+    return {"status": "ok"}
+
+
+@router.get("/form-status")
+async def form_status(telegram_user_id: str = ""):
+    """Polled by bot to check if user completed the form."""
+    data = _login_store.pop(f"form_{telegram_user_id}", None)
+    if data:
+        return {"done": True, "name": data["name"], "pan": data["pan"]}
+    return {"done": False}
+
+
+@router.post("/submit-transaction")
+async def submit_transaction(data: dict):
+    """Called by transaction web page."""
+    from bot.services.proactive import add_transaction
+    username = data.get("username", "").lower().strip()
+    merchant = data.get("merchant", "")
+    category = data.get("category", "other")
+    amount = float(data.get("amount", 0))
+
+    # Auto-detect icon from merchant
+    icons = {
+        "Singapore Airlines": "✈️", "Emirates": "✈️", "Marriott Hotels": "🏨",
+        "Booking.com": "🏨", "Uber (Airport)": "🚕",
+        "FirstCry": "👶", "Mothercare": "👶", "Dr. Mehta Clinic": "🏥", "BabyCenter Store": "🍼",
+        "Uber Eats": "🍔", "DoorDash": "🍕", "Starbucks": "☕",
+        "Amazon": "📦", "Nike.com": "👟", "Target": "🛒",
+    }
+    icon = icons.get(merchant, "💳")
+
+    result = add_transaction(username, merchant, category, amount, icon)
+    return result
+
+
+@router.get("/transactions")
+async def get_transactions_for_user(username: str = ""):
+    """Get transactions for a username."""
+    from bot.services.proactive import load_transactions
+    data = load_transactions()
+    user_data = data.get(username.lower(), {})
+    return user_data.get("transactions", [])

@@ -6,18 +6,17 @@ from bot.config import WEBAPP_URL
 
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
-    """2x2 topic menu grid matching v9 prototype."""
+    """2x2 topic menu grid."""
     buttons = [
         [
             InlineKeyboardButton("💳 Apply for Credit", callback_data="topic:credit"),
             InlineKeyboardButton("💰 Check Balance", callback_data="topic:balance"),
         ],
         [
-            InlineKeyboardButton("🎁 View Rewards", callback_data="topic:rewards"),
-            InlineKeyboardButton("🙋 Support", callback_data="topic:support"),
+            InlineKeyboardButton("📊 Credit Portfolio", callback_data="topic:portfolio"),
+            InlineKeyboardButton("⚖️ Collections", callback_data="topic:collections"),
         ],
     ]
-    # Add Mini App button if WEBAPP_URL is set and uses HTTPS
     if WEBAPP_URL and WEBAPP_URL.startswith("https://"):
         buttons.append([
             InlineKeyboardButton("📱 Open Full App", web_app=WebAppInfo(url=WEBAPP_URL + "/webapp")),
@@ -26,7 +25,6 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 
 
 def post_approval_keyboard() -> InlineKeyboardMarkup:
-    """Post-approval menu — matches v9 post-done topic grid."""
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("📋 View Statement", callback_data="action:statement"),
@@ -34,13 +32,12 @@ def post_approval_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton("💰 Check Balance", callback_data="topic:balance"),
-            InlineKeyboardButton("🎁 View Rewards", callback_data="topic:rewards"),
+            InlineKeyboardButton("📊 Credit Portfolio", callback_data="topic:portfolio"),
         ],
     ])
 
 
 def offers_keyboard() -> InlineKeyboardMarkup:
-    """3 credit offer buttons."""
     buttons = []
     for i, offer in enumerate(CREDIT_OFFERS):
         label = f"{'⭐ ' if offer['highlight'] else ''}{offer['name']} — {offer['amount']}"
@@ -49,26 +46,38 @@ def offers_keyboard() -> InlineKeyboardMarkup:
 
 
 def confirm_keyboard() -> InlineKeyboardMarkup:
-    """Confirm or go back."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("✅ Submit Application", callback_data="action:submit")],
         [InlineKeyboardButton("← Back to Offers", callback_data="action:back_offers")],
     ])
 
 
-def yes_no_keyboard(prefix: str) -> InlineKeyboardMarkup:
+def portfolio_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("Yes", callback_data=f"{prefix}:yes"),
-            InlineKeyboardButton("No", callback_data=f"{prefix}:no"),
-        ],
+        [InlineKeyboardButton("🔄 Optimize My Spend", callback_data="portfolio:optimize")],
+        [InlineKeyboardButton("🔀 Compare Cards", callback_data="portfolio:compare")],
+        [InlineKeyboardButton("📈 What-If Analysis", callback_data="portfolio:whatif")],
     ])
 
 
-def support_keyboard() -> InlineKeyboardMarkup:
+def collections_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📞 Call PayPal", callback_data="support:call")],
-        [InlineKeyboardButton("💬 Live Chat", callback_data="support:chat")],
-        [InlineKeyboardButton("⚠️ Dispute a Charge", callback_data="support:dispute")],
-        [InlineKeyboardButton("🔒 Lost Card", callback_data="support:lost")],
+        [InlineKeyboardButton("📋 Show me options", callback_data="collect:options")],
+        [InlineKeyboardButton("😔 I can't pay right now", callback_data="collect:hardship")],
+        [InlineKeyboardButton("❌ I dispute this balance", callback_data="collect:dispute")],
+    ])
+
+
+def collections_plan_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("Option A — Minimum today", callback_data="collect:plan_a")],
+        [InlineKeyboardButton("Option B — 3-month instalments", callback_data="collect:plan_b")],
+        [InlineKeyboardButton("Option C — Lump sum settlement", callback_data="collect:plan_c")],
+    ])
+
+
+def proactive_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Yes, show me", callback_data="proactive:yes")],
+        [InlineKeyboardButton("❌ Not right now", callback_data="proactive:no")],
     ])

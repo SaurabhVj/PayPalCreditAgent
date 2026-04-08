@@ -12,12 +12,15 @@ from bot.models.state import FlowState
 from bot.models.offers import CREDIT_OFFERS
 from bot.utils.keyboards import (
     offers_keyboard, confirm_keyboard, post_approval_keyboard,
-    main_menu_keyboard, support_keyboard,
+    main_menu_keyboard, portfolio_keyboard, collections_keyboard,
+    collections_plan_keyboard, proactive_keyboard,
 )
 from bot.utils.formatters import (
     all_offers_message, confirm_message, approval_message,
-    balance_message, statement_message, rewards_message,
-    scoring_message,
+    balance_message, statement_message,
+    portfolio_message, portfolio_optimize_message, portfolio_compare_message,
+    collections_message, collections_hardship_message,
+    collections_options_message, collections_plan_confirmed,
 )
 
 
@@ -38,17 +41,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=_post_balance_keyboard(),
         )
 
-    elif data == "topic:rewards":
-        await query.message.reply_text(
-            rewards_message(), parse_mode="Markdown",
-        )
+    elif data == "topic:portfolio":
+        await _handle_portfolio(query)
 
-    elif data == "topic:support":
-        await query.message.reply_text(
-            "🙋 *How can we help?*\n\nChoose a support option:",
-            parse_mode="Markdown",
-            reply_markup=support_keyboard(),
-        )
+    elif data == "topic:collections":
+        await _handle_collections(query)
 
     # ── Auth flow — after Mini App login completes ──
     elif data == "auth:connected":
@@ -108,9 +105,57 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("card:"):
         await _handle_card_action(query, data.split(":")[1])
 
-    # ── Support ──
-    elif data.startswith("support:"):
-        await _handle_support(query, data.split(":")[1])
+    # ── Portfolio actions ──
+    elif data == "portfolio:optimize":
+        await query.message.reply_text(portfolio_optimize_message(), parse_mode="Markdown")
+
+    elif data == "portfolio:compare":
+        await query.message.reply_text(portfolio_compare_message(), parse_mode="Markdown")
+
+    elif data == "portfolio:whatif":
+        await query.message.reply_text(
+            "📈 *What-If Analysis*\n\n"
+            "Type a question like:\n"
+            '• _"What if I spend more on travel?"_\n'
+            '• _"What if I reduce dining and increase shopping?"_\n'
+            '• _"Which card is better for $10K travel spend?"_\n\n'
+            "I'll calculate projected rewards for you.",
+            parse_mode="Markdown",
+        )
+
+    # ── Collections actions ──
+    elif data == "collect:options":
+        await query.message.reply_text(collections_options_message(), parse_mode="Markdown", reply_markup=collections_plan_keyboard())
+
+    elif data == "collect:hardship":
+        await query.message.reply_text(collections_hardship_message(), parse_mode="Markdown")
+        await asyncio.sleep(1)
+        await query.message.reply_text(collections_options_message(), parse_mode="Markdown", reply_markup=collections_plan_keyboard())
+
+    elif data == "collect:dispute":
+        await query.message.reply_text(
+            "❌ *Dispute Filed*\n\n"
+            "Your dispute has been recorded. Our team will review\n"
+            "within 5 business days and contact you with findings.\n\n"
+            "During the review:\n"
+            "• No late fees will accrue\n"
+            "• No credit reporting changes\n"
+            "• You'll receive updates via this chat",
+            parse_mode="Markdown",
+        )
+
+    elif data.startswith("collect:plan_"):
+        plan = data.split("_")[1].upper()
+        await query.message.chat.send_action(ChatAction.TYPING)
+        await asyncio.sleep(1.5)
+        await query.message.reply_text(collections_plan_confirmed(plan), parse_mode="Markdown")
+
+    # ── Proactive offer response ──
+    elif data == "proactive:yes":
+        await _handle_credit_start(query, user_id)
+
+    elif data == "proactive:no":
+        await query.message.reply_text("No worries! I'll be here if you change your mind. 😊")
 
 
 # ── STEP 1: Show auth card ──
@@ -337,13 +382,40 @@ def _card_action_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
+async def _handle_portfolio(query):
+    """Show credit portfolio analysis."""
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await asyncio.sleep(1)
+    await query.message.reply_text(
+        "🔍 _Fetching your spend history and card usage..._",
+        parse_mode="Markdown",
+    )
+    await asyncio.sleep(2)
+    await query.message.reply_text(
+        portfolio_message(),
+        parse_mode="Markdown",
+        reply_markup=portfolio_keyboard(),
+    )
+
+
+async def _handle_collections(query):
+    """Show collections/overdue scenario."""
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await asyncio.sleep(1)
+    await query.message.reply_text(
+        collections_message(),
+        parse_mode="Markdown",
+        reply_markup=collections_keyboard(),
+    )
+
+
 async def _poll_login(query, user_id: int):
     """Background task — polls API for Mini App login completion."""
     import httpx
     import logging
     logger = logging.getLogger(__name__)
 
-    for _ in range(30):  # Poll for up to 60 seconds
+    for _ in range(30):
         await asyncio.sleep(2)
         try:
             async with httpx.AsyncClient(timeout=5) as client:
@@ -361,16 +433,62 @@ async def _poll_login(query, user_id: int):
                         f"👤 *{data['name']}*\n"
                         f"📧 {data['email']}\n"
                         f"🏦 PayPal member: 36 months\n"
-                        f"💳 Credit band: _prime_\n\n"
-                        f"_Starting credit assessment..._",
+                        f"💳 Eligibility: _Pre-qualified_",
+                        parse_mode="Markdown",
+                    )
+                    await asyncio.sleep(1)
+
+                    # Show pre-filled form summary + button to complete
+                    form_url = f"{WEBAPP_URL}/webapp?mode=form&name={data['name']}&email={data['email']}"
+                    await query.message.reply_text(
+                        "📋 *Application Pre-filled*\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        "19 of 20 fields filled from your PayPal profile:\n\n"
+                        f"✅ Name: {data['name']}\n"
+                        f"✅ Email: {data['email']}\n"
+                        "✅ Phone: +1 XXX-XXX-1234\n"
+                        "✅ Address: 14 MG Road, Bengaluru\n"
+                        "✅ DOB, Employer, Income...\n\n"
+                        "✏️ *Missing: PAN / SSN last 4 digits*\n\n"
+                        "_Tap below to review and complete:_",
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("📝 Complete Application", web_app=WebAppInfo(url=form_url))],
+                        ]),
+                    )
+
+                    # Poll for form completion
+                    asyncio.create_task(_poll_form(query, user_id))
+                    return
+        except Exception as e:
+            logger.debug(f"Login poll error: {e}")
+    logger.info(f"Login poll timeout for user {user_id}")
+
+
+async def _poll_form(query, user_id: int):
+    """Background task — polls API for form completion."""
+    import httpx
+    import logging
+    logger = logging.getLogger(__name__)
+
+    for _ in range(60):
+        await asyncio.sleep(2)
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{WEBAPP_URL}/api/form-status?telegram_user_id={user_id}")
+                data = resp.json()
+                if data.get("done"):
+                    await query.message.reply_text(
+                        "✅ *Application form complete!* All 20 fields confirmed.\n\n"
+                        "_Analyzing your profile..._",
                         parse_mode="Markdown",
                     )
                     await asyncio.sleep(1)
                     await _handle_scoring(query, user_id)
                     return
         except Exception as e:
-            logger.debug(f"Login poll error: {e}")
-    logger.info(f"Login poll timeout for user {user_id}")
+            logger.debug(f"Form poll error: {e}")
+    logger.info(f"Form poll timeout for user {user_id}")
 
 
 def _card_manage_message(name: str = "User") -> str:

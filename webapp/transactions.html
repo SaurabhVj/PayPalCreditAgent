@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayPal Credit Agent — Transaction Simulator</title>
+<style>
+:root{--navy:#001f5b;--blue:#0057b8;--sky:#0ea5e9;--mint:#10b981;--gold:#f59e0b;--rose:#f43f5e;--ink:#0a0f1e;--slate:#64748b;--mist:#f1f5f9;--white:#fff;--border:rgba(0,31,91,0.10)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:#eef2f8;color:var(--ink);min-height:100vh;font-size:14px}
+.container{max-width:600px;margin:0 auto;padding:24px 16px}
+.header{background:linear-gradient(135deg,var(--navy),var(--blue));border-radius:16px;padding:24px;color:white;margin-bottom:20px;text-align:center}
+.header h1{font-size:20px;font-weight:800;margin-bottom:4px}
+.header p{font-size:13px;opacity:0.75}
+.card{background:white;border-radius:14px;padding:20px;box-shadow:0 2px 16px rgba(0,31,91,0.08);margin-bottom:16px}
+.card h2{font-size:16px;font-weight:700;margin-bottom:14px;color:var(--navy)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--slate);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px}
+.form-group input,.form-group select{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;outline:none;font-family:inherit}
+.form-group input:focus,.form-group select:focus{border-color:var(--blue)}
+.note{background:var(--mist);border-left:3px solid var(--sky);border-radius:0 8px 8px 0;padding:10px 12px;font-size:12px;color:#0369a1;margin-bottom:14px;line-height:1.5}
+.btn{width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:inherit}
+.btn-primary{background:var(--blue);color:white}
+.btn-primary:hover{background:var(--navy)}
+.btn-primary:disabled{opacity:0.5;cursor:default}
+.success{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:12px;color:#065f46;font-size:13px;margin-top:10px;display:none}
+.txn-list{margin-top:14px}
+.txn-item{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #f1f5f9}
+.txn-item:last-child{border:none}
+.txn-icon{width:36px;height:36px;border-radius:50%;background:var(--mist);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.txn-info{flex:1}
+.txn-name{font-size:13px;font-weight:600}
+.txn-cat{font-size:11px;color:var(--slate)}
+.txn-amt{font-size:14px;font-weight:700;color:var(--rose)}
+.txn-time{font-size:10px;color:var(--slate)}
+.empty{text-align:center;color:var(--slate);padding:20px;font-size:13px}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
+.badge-travel{background:rgba(14,165,233,0.1);color:var(--sky)}
+.badge-baby{background:rgba(168,85,247,0.1);color:#7c3aed}
+.badge-dining{background:rgba(245,158,11,0.1);color:#92400e}
+.badge-shopping{background:rgba(16,185,129,0.1);color:#059669}
+.badge-other{background:var(--mist);color:var(--slate)}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>💳 Transaction Simulator</h1>
+    <p>Simulate PayPal transactions to trigger proactive credit offers</p>
+  </div>
+
+  <div class="note">
+    💡 Enter your <b>Telegram username</b> (without @) to link transactions to your bot. After submitting a travel or baby-related transaction, the bot will proactively message you with a credit offer within 30 seconds.
+  </div>
+
+  <div class="card">
+    <h2>New Transaction</h2>
+    <div class="form-group">
+      <label>Telegram Username</label>
+      <input type="text" id="username" placeholder="e.g. saurabh (without @)" value="">
+    </div>
+    <div class="form-group">
+      <label>Merchant</label>
+      <select id="merchant" onchange="updateCategory()">
+        <option value="">Select a merchant...</option>
+        <optgroup label="✈️ Travel">
+          <option value="Singapore Airlines" data-cat="travel" data-icon="✈️">Singapore Airlines</option>
+          <option value="Emirates" data-cat="travel" data-icon="✈️">Emirates</option>
+          <option value="Marriott Hotels" data-cat="travel" data-icon="🏨">Marriott Hotels</option>
+          <option value="Booking.com" data-cat="travel" data-icon="🏨">Booking.com</option>
+          <option value="Uber (Airport)" data-cat="travel" data-icon="🚕">Uber (Airport Transfer)</option>
+        </optgroup>
+        <optgroup label="👶 Baby & Family">
+          <option value="FirstCry" data-cat="baby" data-icon="👶">FirstCry</option>
+          <option value="Mothercare" data-cat="baby" data-icon="👶">Mothercare</option>
+          <option value="Dr. Mehta Clinic" data-cat="baby" data-icon="🏥">Dr. Mehta Clinic (Paediatric)</option>
+          <option value="BabyCenter Store" data-cat="baby" data-icon="🍼">BabyCenter Store</option>
+        </optgroup>
+        <optgroup label="🍽 Dining">
+          <option value="Uber Eats" data-cat="dining" data-icon="🍔">Uber Eats</option>
+          <option value="DoorDash" data-cat="dining" data-icon="🍕">DoorDash</option>
+          <option value="Starbucks" data-cat="dining" data-icon="☕">Starbucks</option>
+        </optgroup>
+        <optgroup label="🛒 Shopping">
+          <option value="Amazon" data-cat="shopping" data-icon="📦">Amazon</option>
+          <option value="Nike.com" data-cat="shopping" data-icon="👟">Nike.com</option>
+          <option value="Target" data-cat="shopping" data-icon="🛒">Target</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Category <span id="cat-badge"></span></label>
+      <input type="text" id="category" readonly placeholder="Auto-detected from merchant">
+    </div>
+    <div class="form-group">
+      <label>Amount ($)</label>
+      <input type="number" id="amount" placeholder="e.g. 1200" min="1">
+    </div>
+    <button class="btn btn-primary" id="submitBtn" onclick="submitTransaction()">Submit Transaction</button>
+    <div class="success" id="success"></div>
+  </div>
+
+  <div class="card">
+    <h2>Transaction History</h2>
+    <div id="txnList" class="txn-list"><div class="empty">No transactions yet. Submit one above to get started.</div></div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+
+function updateCategory() {
+  const sel = document.getElementById('merchant');
+  const opt = sel.options[sel.selectedIndex];
+  const cat = opt.dataset.cat || '';
+  document.getElementById('category').value = cat;
+  const badge = document.getElementById('cat-badge');
+  const cls = {travel:'badge-travel',baby:'badge-baby',dining:'badge-dining',shopping:'badge-shopping'}[cat] || 'badge-other';
+  badge.innerHTML = cat ? `<span class="badge ${cls}">${cat}</span>` : '';
+}
+
+async function submitTransaction() {
+  const username = document.getElementById('username').value.trim().toLowerCase().replace('@','');
+  const merchant = document.getElementById('merchant').value;
+  const category = document.getElementById('category').value;
+  const amount = parseFloat(document.getElementById('amount').value);
+
+  if (!username || !merchant || !amount) {
+    alert('Please fill all fields');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+
+  try {
+    const resp = await fetch(`${API}/submit-transaction`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username, merchant, category, amount }),
+    });
+    const data = await resp.json();
+
+    const suc = document.getElementById('success');
+    suc.style.display = 'block';
+    suc.innerHTML = `✅ Transaction recorded! <b>${merchant}</b> — $${amount.toFixed(2)}<br>
+      ${data.proactive_triggered ? '🔔 <b>Proactive offer will be sent to your Telegram shortly!</b>' : ''}`;
+
+    loadHistory(username);
+    document.getElementById('merchant').value = '';
+    document.getElementById('category').value = '';
+    document.getElementById('amount').value = '';
+    document.getElementById('cat-badge').innerHTML = '';
+  } catch(e) {
+    alert('Error submitting transaction');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Submit Transaction';
+}
+
+async function loadHistory(username) {
+  if (!username) return;
+  try {
+    const resp = await fetch(`${API}/transactions?username=${username}`);
+    const txns = await resp.json();
+    const list = document.getElementById('txnList');
+    if (!txns.length) {
+      list.innerHTML = '<div class="empty">No transactions yet.</div>';
+      return;
+    }
+    list.innerHTML = txns.map(t => `
+      <div class="txn-item">
+        <div class="txn-icon">${t.icon || '💳'}</div>
+        <div class="txn-info">
+          <div class="txn-name">${t.merchant}</div>
+          <div class="txn-cat">${t.category} <span class="badge badge-${t.category}">${t.category}</span></div>
+        </div>
+        <div>
+          <div class="txn-amt">-$${t.amount.toFixed(2)}</div>
+          <div class="txn-time">${new Date(t.timestamp).toLocaleString()}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+// Auto-load history when username is entered
+document.getElementById('username').addEventListener('blur', function() {
+  loadHistory(this.value.trim().toLowerCase().replace('@',''));
+});
+</script>
+</body>
+</html>

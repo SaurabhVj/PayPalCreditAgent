@@ -24,3 +24,8 @@ async def root():
 @app.get("/webapp")
 async def webapp():
     return FileResponse("webapp/index.html")
+
+
+@app.get("/transactions")
+async def transactions_page():
+    return FileResponse("webapp/transactions.html")

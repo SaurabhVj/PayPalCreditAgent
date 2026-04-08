@@ -51,3 +51,56 @@ MOCK_REWARDS = {
     "tier": "Silver",
     "next_milestone": "7,820 pts to Gold",
 }
+
+MOCK_PORTFOLIO = {
+    "total_credit": "$42,000",
+    "total_balance": "$3,820",
+    "utilization": "9.1%",
+    "rewards_ytd": "$698",
+    "cards": [
+        {
+            "name": "PayPal Miles+",
+            "number": "•••• 4821",
+            "limit": "$22,000",
+            "balance": "$3,240",
+            "available": "$18,760",
+            "utilization": "14.7%",
+            "rewards": "42,180 miles",
+            "earn_rates": {"travel": "3x", "dining": "2x", "groceries": "1x", "other": "1x"},
+            "nudge": "7,820 miles from a free Mumbai–Dubai return. Spend $260 more on travel.",
+        },
+        {
+            "name": "PayPal Everyday Cash",
+            "number": "•••• 9203",
+            "limit": "$20,000",
+            "balance": "$580",
+            "available": "$19,420",
+            "utilization": "2.9%",
+            "rewards": "$114.20 cashback",
+            "earn_rates": {"travel": "1%", "dining": "2%", "groceries": "2%", "other": "2%"},
+            "nudge": "Use this card for groceries — Miles+ only earns 1x there, Everyday Cash earns 2%.",
+        },
+    ],
+    "spend_breakdown": {
+        "travel": {"annual": 4200, "miles_earn": 0.05, "cash_earn": 0.02},
+        "dining": {"annual": 2800, "miles_earn": 0.03, "cash_earn": 0.02},
+        "shopping": {"annual": 3600, "miles_earn": 0.02, "cash_earn": 0.02},
+        "other": {"annual": 1800, "miles_earn": 0.01, "cash_earn": 0.02},
+    },
+}
+
+MOCK_COLLECTIONS = {
+    "case_id": "C-2024-00391",
+    "customer": "Account holder",
+    "card": "PayPal Miles+ ••••3847",
+    "overdue_amount": "$1,240",
+    "minimum_due": "$148",
+    "days_past_due": 61,
+    "hardship_flag": "Possible — spend dropped 60%",
+    "human_escalation": "Auto at Day 90 if unresolved",
+    "options": {
+        "A": {"name": "Minimum today", "detail": "Pay $148 minimum — freeze interest for 90 days"},
+        "B": {"name": "3-month instalments", "detail": "$415/month · 0% interest · starts next month"},
+        "C": {"name": "Lump sum settlement", "detail": "Pay $800 now — 35% reduction"},
+    },
+}

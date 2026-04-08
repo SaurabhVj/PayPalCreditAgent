@@ -6,10 +6,11 @@ if (tg) { tg.ready(); tg.expand(); }
 const API = '/api';
 let busy = false, flowState = 'idle', chosenOffer = null;
 let userName = '', userEmail = '';
-// Check if opened for login — hash may come as #login or encoded
+// Check open mode — login or form
 let openedForLogin = window.location.hash.includes('login') ||
                      window.location.href.includes('#login') ||
                      window.location.search.includes('mode=login');
+let openedForForm = window.location.search.includes('mode=form');
 
 const OFFERS = [
   { tag:'Best Match', name:'PayPal Pay Later', amt:'$2,500', score:96, detail:'0% APR · 6 months · No annual fee' },
@@ -127,7 +128,9 @@ async function handleLogin() {
   if (acBtn) { acBtn.textContent = '✓ Connected'; acBtn.classList.add('done'); }
   let r = addBubble('out', 'Connected ✓'); addTs(r, 'out');
   await sleep(400);
-  await runScoring();
+
+  // Show pre-filled application form
+  showApplicationForm();
 }
 
 // ── Mock Screens ──
@@ -523,16 +526,65 @@ async function doSend() {
   busy = false;
 }
 
+// ── Application Form ──
+function showApplicationForm() {
+  // Pre-fill with user info from login
+  if ($('f-name')) $('f-name').value = userName || '';
+  if ($('f-email')) $('f-email').value = userEmail || '';
+  $('formOverlay').classList.add('show');
+}
+
+async function submitForm() {
+  const pan = $('f-pan')?.value || '';
+  const name = $('f-name')?.value || userName;
+
+  if (openedForForm) {
+    // Opened from bot chat — notify API and close
+    const tgUserId = tg?.initDataUnsafe?.user?.id || 'unknown';
+    try {
+      await fetch(`${API}/form-complete?telegram_user_id=${tgUserId}&name=${encodeURIComponent(name)}&pan=${pan}`, { method: 'POST' });
+    } catch(e) {}
+
+    $('formOverlay').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100%">
+        <div style="text-align:center;padding:20px">
+          <div style="font-size:2.5rem;margin-bottom:12px">✅</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:8px">Application Complete!</div>
+          <div style="font-size:13px;color:var(--dim)">Close this window to return to chat.</div>
+        </div>
+      </div>`;
+
+    await sleep(800);
+    if (tg) try { tg.close(); } catch(e) {}
+    return;
+  }
+
+  // In-app flow — close form and continue
+  $('formOverlay').classList.remove('show');
+  let r = addBubble('inc', `📋 Application form complete — all 20 fields confirmed.<br>Now analyzing your profile...`);
+  addTs(r, 'inc');
+  await sleep(500);
+  await runScoring();
+}
+
 // ── Auto-start ──
 window.addEventListener('load', () => {
   if (openedForLogin) {
-    // Opened from bot chat for login only — hide chat, show login directly
     document.querySelector('.chat-hd').style.display = 'none';
     document.querySelector('.chat-bg').style.display = 'none';
     document.querySelector('.chat-inp').style.display = 'none';
     $('loginOverlay').classList.add('show');
+  } else if (openedForForm) {
+    // Opened from bot chat for form only
+    document.querySelector('.chat-hd').style.display = 'none';
+    document.querySelector('.chat-bg').style.display = 'none';
+    document.querySelector('.chat-inp').style.display = 'none';
+    // Pre-fill from URL params
+    const params = new URLSearchParams(window.location.search);
+    userName = params.get('name') || '';
+    userEmail = params.get('email') || '';
+    showApplicationForm();
   } else {
-    // Normal Mini App — start chat flow
     setTimeout(startFlow, 500);
   }
 });

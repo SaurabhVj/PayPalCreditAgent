@@ -4,6 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from bot.utils.keyboards import main_menu_keyboard
 from bot.services.session import reset_session, set_state, get_session
+from bot.services.user_store import store_user
 from bot.models.state import FlowState
 
 
@@ -16,6 +17,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session = get_session(user.id)
     session["name"] = user.first_name or "there"
     session["email"] = ""
+
+    # Store username → chat_id for proactive messages
+    if user.username:
+        store_user(user.username.lower(), user.id)
 
     name = user.first_name or "there"
     await update.message.reply_text(

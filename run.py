@@ -30,6 +30,11 @@ async def main():
     )
     logger.info("Telegram bot started (polling mode)")
 
+    # Start proactive offer detection engine
+    from bot.services.proactive import proactive_loop
+    asyncio.create_task(proactive_loop(bot_app.bot))
+    logger.info("Proactive detection engine started")
+
     # Start FastAPI
     config = uvicorn.Config(
         "api.server:app",

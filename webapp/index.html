@@ -57,6 +57,28 @@
       <div class="login-footer">Having trouble logging in?</div>
     </div>
   </div>
+  <!-- PRE-FILLED APPLICATION FORM OVERLAY -->
+  <div class="form-overlay" id="formOverlay">
+    <div class="form-card">
+      <div class="form-header">
+        <div class="form-badge">📋 19 of 20 fields pre-filled</div>
+        <div class="form-title">Application Form</div>
+        <div class="form-sub">Fields marked ✅ are from your PayPal profile</div>
+      </div>
+      <div class="form-body">
+        <div class="form-field filled"><span class="field-label">✅ Full Name</span><input type="text" id="f-name" value="" class="field-input filled-input"></div>
+        <div class="form-field filled"><span class="field-label">✅ Email</span><input type="text" id="f-email" value="" class="field-input filled-input" readonly></div>
+        <div class="form-field filled"><span class="field-label">✅ Phone</span><input type="text" value="+1 XXX-XXX-1234" class="field-input filled-input"></div>
+        <div class="form-field filled"><span class="field-label">✅ Address</span><input type="text" value="14 MG Road, Bengaluru" class="field-input filled-input"></div>
+        <div class="form-field filled"><span class="field-label">✅ Date of Birth</span><input type="text" value="15 Mar 1990" class="field-input filled-input"></div>
+        <div class="form-field filled"><span class="field-label">✅ Employer</span><input type="text" value="Infosys Ltd" class="field-input filled-input"></div>
+        <div class="form-field filled"><span class="field-label">✅ Annual Income</span><input type="text" value="$48,000" class="field-input filled-input"></div>
+        <div class="form-field filled"><span class="field-label">✅ PayPal Member</span><input type="text" value="36 months" class="field-input filled-input" readonly></div>
+        <div class="form-field empty"><span class="field-label">✏️ PAN / SSN (last 4)</span><input type="text" id="f-pan" placeholder="Enter last 4 digits" class="field-input empty-input" maxlength="4"></div>
+      </div>
+      <button class="form-submit" onclick="submitForm()">Confirm & Continue →</button>
+    </div>
+  </div>
 </div>
 
 <script src="/static/js/app.js"></script>
