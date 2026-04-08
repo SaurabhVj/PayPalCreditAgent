@@ -162,6 +162,16 @@ async def proactive_loop(bot):
                     msg = offer["message"]
 
                     try:
+                        # Store proactive context in user's session for follow-up questions
+                        from bot.services.session import set_proactive_context
+                        from bot.services.user_store import get_chat_id
+                        set_proactive_context(chat_id, {
+                            "merchant": merchant,
+                            "amount": amount,
+                            "category": trigger["pattern"],
+                            "product": offer["product"],
+                        })
+
                         await bot.send_message(
                             chat_id=chat_id,
                             text=msg,

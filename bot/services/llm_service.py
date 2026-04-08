@@ -90,17 +90,47 @@ If user mentions overdue/late payments:
 """
 
 
-async def ask_llm(user_message: str, conversation_history: list[dict] | None = None) -> str:
+def build_prompt(user_name: str = "", user_email: str = "", proactive_context: dict | None = None) -> str:
+    """Build system prompt with dynamic user + proactive context appended."""
+    prompt = SYSTEM_PROMPT
+
+    # Add dynamic user context
+    if user_name:
+        prompt += f"\n\n## CURRENT USER\nName: {user_name}\nEmail: {user_email}\nAddress the user by their first name.\n"
+
+    # Add proactive trigger context if present
+    if proactive_context:
+        prompt += (
+            f"\n\n## RECENT PROACTIVE TRIGGER\n"
+            f"The bot detected a transaction and proactively messaged the user.\n"
+            f"Merchant: {proactive_context.get('merchant', 'Unknown')}\n"
+            f"Amount: ${proactive_context.get('amount', 0)}\n"
+            f"Category: {proactive_context.get('category', 'unknown')}\n"
+            f"Product offered: {proactive_context.get('product', 'Unknown')}\n\n"
+            f"If the user asks 'how did you know' or 'how do you have my data':\n"
+            f"- Explain that you detected the transaction pattern on their PayPal account\n"
+            f"- Reassure them their data is private and secure\n"
+            f"- Mention the specific merchant and amount to show transparency\n"
+        )
+
+    return prompt
+
+
+async def ask_llm(user_message: str, conversation_history: list[dict] | None = None,
+                  user_name: str = "", user_email: str = "",
+                  proactive_context: dict | None = None) -> str:
     """Send a message to Gemini and get a response."""
     if not GEMINI_API_KEY:
         return None
 
+    prompt = build_prompt(user_name, user_email, proactive_context)
+
     contents = []
-    contents.append({"role": "user", "parts": [{"text": SYSTEM_PROMPT}]})
+    contents.append({"role": "user", "parts": [{"text": prompt}]})
     contents.append({"role": "model", "parts": [{"text": "Understood. I'm PayPal Credit Agent, ready to help with credit applications, balance checks, portfolio analysis, collections, and more. I'll use action tags to trigger workflows when appropriate."}]})
 
     if conversation_history:
-        for msg in conversation_history[-10:]:
+        for msg in conversation_history[-15:]:
             contents.append({
                 "role": "user" if msg["role"] == "user" else "model",
                 "parts": [{"text": msg["content"]}]

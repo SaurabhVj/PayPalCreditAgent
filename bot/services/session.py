@@ -32,6 +32,26 @@ def get_selected_offer(user_id: int) -> int | None:
     return get_session(user_id)["selected_offer"]
 
 
+def add_message(user_id: int, role: str, content: str):
+    """Store a message in conversation history."""
+    session = get_session(user_id)
+    session["messages"].append({"role": role, "content": content})
+    if len(session["messages"]) > 15:
+        session["messages"] = session["messages"][-15:]
+
+
+def get_messages(user_id: int) -> list[dict]:
+    return get_session(user_id)["messages"]
+
+
+def set_proactive_context(user_id: int, context: dict):
+    get_session(user_id)["proactive_context"] = context
+
+
+def get_proactive_context(user_id: int) -> dict | None:
+    return get_session(user_id).get("proactive_context")
+
+
 def reset_session(user_id: int):
     _sessions[user_id] = {
         "state": FlowState.IDLE,
