@@ -3,7 +3,7 @@
 import json
 import logging
 import httpx
-from bot.config import GEMINI_API_KEY
+from bot.config import GEMINI_API_KEY, GROQ_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -120,53 +120,101 @@ async def ask_llm(user_message: str, conversation_history: list[dict] | None = N
                   user_name: str = "", user_email: str = "",
                   proactive_context: dict | None = None) -> str:
     """Send a message to Gemini and get a response."""
-    if not GEMINI_API_KEY:
+    if not GROQ_API_KEY and not GEMINI_API_KEY:
         return None
 
     prompt = build_prompt(user_name, user_email, proactive_context)
 
-    contents = []
-    contents.append({"role": "user", "parts": [{"text": prompt}]})
-    contents.append({"role": "model", "parts": [{"text": "Understood. I'm PayPal Credit Agent, ready to help with credit applications, balance checks, portfolio analysis, collections, and more. I'll use action tags to trigger workflows when appropriate."}]})
-
+    # Build messages in OpenAI format (used by Groq)
+    messages = [
+        {"role": "system", "content": prompt},
+    ]
     if conversation_history:
         for msg in conversation_history[-15:]:
-            contents.append({
-                "role": "user" if msg["role"] == "user" else "model",
-                "parts": [{"text": msg["content"]}]
+            messages.append({
+                "role": msg["role"] if msg["role"] == "user" else "assistant",
+                "content": msg["content"],
             })
+    messages.append({"role": "user", "content": user_message})
 
-    contents.append({"role": "user", "parts": [{"text": user_message}]})
+    # Try Groq first (faster, higher quota)
+    if GROQ_API_KEY:
+        result = await _call_groq(messages)
+        if result:
+            return result
 
-    models = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"]
+    # Fallback to Gemini
+    if GEMINI_API_KEY:
+        result = await _call_gemini(messages, prompt, user_message, conversation_history)
+        if result:
+            return result
+
+    logger.warning("All LLM providers failed")
+    return None
+
+
+async def _call_groq(messages: list[dict]) -> str | None:
+    """Call Groq API (OpenAI-compatible)."""
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 
     for model in models:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.post(
-                    url,
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {GROQ_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
                     json={
-                        "contents": contents,
-                        "generationConfig": {
-                            "temperature": 0.7,
-                            "maxOutputTokens": 500,
-                        }
+                        "model": model,
+                        "messages": messages,
+                        "temperature": 0.7,
+                        "max_tokens": 500,
                     },
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    text = data["choices"][0]["message"]["content"]
+                    logger.info(f"Groq ({model}) responded successfully")
+                    return text.strip()
+                else:
+                    logger.warning(f"Groq ({model}) returned {resp.status_code}: {resp.text[:200]}")
+                    continue
+        except Exception as e:
+            logger.error(f"Groq ({model}) error: {e}")
+            continue
+    return None
+
+
+async def _call_gemini(messages: list[dict], prompt: str, user_message: str,
+                       conversation_history: list[dict] | None) -> str | None:
+    """Fallback to Gemini API."""
+    contents = [
+        {"role": "user", "parts": [{"text": prompt}]},
+        {"role": "model", "parts": [{"text": "Understood. I'm PayPal Credit Agent ready to help."}]},
+    ]
+    if conversation_history:
+        for msg in conversation_history[-15:]:
+            contents.append({
+                "role": "user" if msg["role"] == "user" else "model",
+                "parts": [{"text": msg["content"]}],
+            })
+    contents.append({"role": "user", "parts": [{"text": user_message}]})
+
+    for model in ["gemini-2.5-flash", "gemini-2.0-flash"]:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(url, json={"contents": contents, "generationConfig": {"temperature": 0.7, "maxOutputTokens": 500}})
+                if resp.status_code == 200:
+                    text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
                     logger.info(f"Gemini ({model}) responded successfully")
                     return text.strip()
                 else:
-                    logger.warning(f"Gemini ({model}) returned {resp.status_code}: {resp.text[:200]}")
                     continue
-        except Exception as e:
-            logger.error(f"Gemini ({model}) error: {e}")
+        except Exception:
             continue
-
-    logger.warning("All Gemini models failed, falling back")
     return None
 
 
