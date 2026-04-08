@@ -28,7 +28,11 @@ You can trigger these workflows by including an action tag in your response:
    Trigger: [ACTION:COLLECTIONS]
    When: User has overdue payments, can't pay, needs payment plan, financial hardship
 
-5. **Show Menu** — Display the main menu with all options
+5. **View Rewards** — Show rewards, points, cashback summary
+   Trigger: [ACTION:REWARDS]
+   When: User asks about rewards, points, cashback, miles, how much they've earned
+
+6. **Show Menu** — Display the main menu with all options
    Trigger: [ACTION:MENU]
    When: User asks "what can you do?", "show menu", "your functionalities", "help", "options", greets with hi/hello
 
@@ -227,7 +231,7 @@ def parse_action(response: str) -> tuple[str | None, str]:
     clean = response
 
     for tag in ["[ACTION:CREDIT]", "[ACTION:BALANCE]", "[ACTION:PORTFOLIO]",
-                "[ACTION:COLLECTIONS]", "[ACTION:MENU]"]:
+                "[ACTION:COLLECTIONS]", "[ACTION:REWARDS]", "[ACTION:MENU]"]:
         if tag in response:
             action = tag.replace("[ACTION:", "").replace("]", "").lower()
             clean = response.replace(tag, "").strip()

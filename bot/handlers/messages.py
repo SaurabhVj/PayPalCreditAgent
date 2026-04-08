@@ -6,7 +6,7 @@ from telegram.constants import ChatAction
 from bot.utils.keyboards import main_menu_keyboard, offers_keyboard, portfolio_keyboard, collections_keyboard
 from bot.utils.formatters import (
     balance_message, statement_message, portfolio_message,
-    collections_message, all_offers_message,
+    collections_message, all_offers_message, rewards_message,
 )
 from bot.services.session import (
     get_state, set_state, get_session,
@@ -190,6 +190,14 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 collections_message(), parse_mode="Markdown",
                 reply_markup=collections_keyboard(),
+            )
+        elif action == "rewards":
+            await update.message.reply_text(
+                rewards_message(), parse_mode="Markdown",
+            )
+        elif action == "balance":
+            await update.message.reply_text(
+                balance_message(), parse_mode="Markdown",
             )
         elif action == "menu":
             await update.message.reply_text(
