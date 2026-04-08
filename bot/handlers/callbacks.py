@@ -72,7 +72,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ── Offer actions ──
     elif data == "action:apply_now":
-        await _handle_confirm(query, user_id)
+        await _handle_application_form(query, user_id)
 
     elif data == "action:tell_more":
         await _handle_tell_more(query, user_id)
@@ -251,7 +251,68 @@ async def _handle_scoring(query, user_id: int):
     )
 
 
-# ── STEP 4: Confirm application ──
+# ── STEP 4: Show application form after offer selection ──
+async def _handle_application_form(query, user_id: int):
+    """Show pre-filled form after user selects an offer."""
+    offer_idx = get_selected_offer(user_id)
+    if offer_idx is None:
+        await query.message.reply_text("Please select an offer first.")
+        return
+
+    from bot.services.session import get_session
+    session = get_session(user_id)
+    name = session.get("name", "User")
+    email = session.get("email", "")
+    o = CREDIT_OFFERS[offer_idx]
+
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await asyncio.sleep(0.5)
+
+    form_url = f"{WEBAPP_URL}/webapp?mode=form&name={name}&email={email}"
+    await query.message.reply_text(
+        f"📋 *Application for {o['name']}*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "19 of 20 fields pre-filled from your PayPal profile:\n\n"
+        f"✅ Name: {name}\n"
+        f"✅ Email: {email}\n"
+        "✅ Phone, Address, DOB, Employer, Income...\n\n"
+        "✏️ *Missing: PAN / SSN last 4 digits*\n\n"
+        "_Tap below to review and submit:_",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📝 Complete Application", web_app=WebAppInfo(url=form_url))],
+        ]),
+    )
+
+    # Poll for form completion → then show confirm card
+    asyncio.create_task(_poll_form_then_confirm(query, user_id))
+
+
+async def _poll_form_then_confirm(query, user_id: int):
+    """Poll for form completion, then show confirm + submit."""
+    import httpx
+    import logging
+    logger = logging.getLogger(__name__)
+
+    for _ in range(60):
+        await asyncio.sleep(2)
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{WEBAPP_URL}/api/form-status?telegram_user_id={user_id}")
+                data = resp.json()
+                if data.get("done"):
+                    await query.message.reply_text(
+                        "✅ *Application form complete!* All 20 fields confirmed.",
+                        parse_mode="Markdown",
+                    )
+                    await asyncio.sleep(0.5)
+                    await _handle_confirm(query, user_id)
+                    return
+        except Exception as e:
+            logger.debug(f"Form poll error: {e}")
+
+
+# ── STEP 5: Confirm application ──
 async def _handle_confirm(query, user_id: int):
     """Show application confirmation card."""
     offer_idx = get_selected_offer(user_id)
@@ -516,27 +577,8 @@ async def _poll_login(query, user_id: int):
                     )
                     await asyncio.sleep(1)
 
-                    # Show pre-filled form summary + button to complete
-                    form_url = f"{WEBAPP_URL}/webapp?mode=form&name={data['name']}&email={data['email']}"
-                    await query.message.reply_text(
-                        "📋 *Application Pre-filled*\n"
-                        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        "19 of 20 fields filled from your PayPal profile:\n\n"
-                        f"✅ Name: {data['name']}\n"
-                        f"✅ Email: {data['email']}\n"
-                        "✅ Phone: +1 XXX-XXX-1234\n"
-                        "✅ Address: 14 MG Road, Bengaluru\n"
-                        "✅ DOB, Employer, Income...\n\n"
-                        "✏️ *Missing: PAN / SSN last 4 digits*\n\n"
-                        "_Tap below to review and complete:_",
-                        parse_mode="Markdown",
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("📝 Complete Application", web_app=WebAppInfo(url=form_url))],
-                        ]),
-                    )
-
-                    # Poll for form completion
-                    asyncio.create_task(_poll_form(query, user_id))
+                    # Go straight to scoring → offers
+                    await _handle_scoring(query, user_id)
                     return
         except Exception as e:
             logger.debug(f"Login poll error: {e}")

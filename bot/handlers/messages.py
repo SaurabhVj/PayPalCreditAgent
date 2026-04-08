@@ -45,21 +45,30 @@ async def _poll_login_from_message(update: Update, user_id: int):
                     )
                     await asyncio.sleep(1)
 
-                    form_url = f"{WEBAPP_URL}/webapp?mode=form&name={data['name']}&email={data['email']}"
+                    # Go straight to scoring → offers (form comes after offer selection)
+                    name = data['name']
                     await update.message.reply_text(
-                        "📋 *Application Pre-filled*\n"
-                        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        "19 of 20 fields filled from your PayPal profile.\n\n"
-                        "✏️ *Missing: PAN / SSN last 4 digits*\n\n"
-                        "_Tap below to review and complete:_",
+                        f"🔍 *Analyzing your profile...*\n\n"
+                        f"Reviewing your PayPal history to find the\n"
+                        f"best credit products for you.\n\n"
+                        f"_This will only take a moment..._",
                         parse_mode="Markdown",
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("📝 Complete Application", web_app=WebAppInfo(url=form_url))],
-                        ]),
                     )
-
-                    # Poll for form
-                    asyncio.create_task(_poll_form_from_message(update, user_id))
+                    await asyncio.sleep(2.5)
+                    await update.message.reply_text(
+                        "✅ *Analysis complete!*\n"
+                        "📊 Offers matched: *3*\n"
+                        "⏱ Response time: *2.8 seconds*",
+                        parse_mode="Markdown",
+                    )
+                    await asyncio.sleep(1)
+                    set_state(user_id, FlowState.OFFERS_SHOWN)
+                    await update.message.reply_text(
+                        f"🎯 Great news, {name} — we found *3 personalised offers* for you.\n"
+                        "Tap one to learn more:\n\n" + all_offers_message(),
+                        parse_mode="Markdown",
+                        reply_markup=offers_keyboard(),
+                    )
                     return
         except Exception as e:
             logger.debug(f"Login poll error: {e}")
