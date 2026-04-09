@@ -426,11 +426,7 @@ async function placeOrder(){
     setTimeout(()=>{
       document.getElementById('checkoutPage').classList.remove('show');
       document.getElementById('osDetail').textContent=`${cart.length} item(s) · $${total.toLocaleString()} · via PayPal`;
-      const pro=document.getElementById('osProactive');
-      if(data.proactive_triggered){
-        pro.style.display='block';
-        pro.innerHTML='🔔 <b>Check your Telegram!</b><br>Our PayPal Credit Agent detected this purchase and sent you a personalised credit card offer based on your spending pattern.';
-      }else{pro.style.display='none'}
+      document.getElementById('osProactive').style.display='none';
       document.getElementById('orderSuccess').classList.add('show');
       cart=[];updateCart();
     },1000);

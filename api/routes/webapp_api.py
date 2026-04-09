@@ -111,22 +111,28 @@ async def checkout(data: dict):
     if payment_method != "paypal":
         return {"status": "ok", "proactive_triggered": False}
 
-    # Find the first triggerable category from cart items
-    triggered = False
+    # Find the highest-value triggerable item in cart
+    best_item = None
+    best_value = 0
     for item in items:
         category = item.get("category", "")
         pattern = detect_pattern(category)
         if pattern:
-            # Write as broadcast transaction — proactive loop sends to ALL users
-            add_transaction(
-                username="__broadcast__",
-                merchant=item["name"],
-                category=category,
-                amount=item["price"],
-                icon=item.get("icon", "💳"),
-            )
-            triggered = True
-            break  # One proactive trigger per checkout
+            value = item.get("price", 0) * item.get("qty", 1)
+            if value > best_value:
+                best_value = value
+                best_item = item
+
+    triggered = False
+    if best_item:
+        add_transaction(
+            username="__broadcast__",
+            merchant=best_item["name"],
+            category=best_item["category"],
+            amount=best_item["price"],
+            icon=best_item.get("icon", "💳"),
+        )
+        triggered = True
 
     return {"status": "ok", "proactive_triggered": triggered}
 
