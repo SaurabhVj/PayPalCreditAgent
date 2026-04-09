@@ -149,25 +149,49 @@ async def proactive_loop(bot):
 
         try:
             users = get_all_users()  # {username: chat_id}
-            txn_data = load_transactions()
 
+            # Handle broadcast transactions (from e-commerce checkout)
+            broadcast_triggers = get_unprocessed_triggers("__broadcast__")
+            for trigger in broadcast_triggers:
+                offer = trigger["offer"]
+                msg = offer["message"]
+
+                # Send to ALL registered users
+                for username, chat_id in users.items():
+                    try:
+                        from bot.services.session import set_proactive_context
+                        set_proactive_context(chat_id, {
+                            "merchant": trigger["merchant"],
+                            "amount": trigger["amount"],
+                            "category": trigger["pattern"],
+                            "product": offer["product"],
+                        })
+
+                        await bot.send_message(
+                            chat_id=chat_id,
+                            text=msg,
+                            parse_mode="Markdown",
+                            reply_markup=proactive_keyboard(trigger["pattern"]),
+                        )
+                        logger.info(f"Broadcast proactive offer sent to @{username} (pattern: {trigger['pattern']})")
+                    except Exception as e:
+                        logger.error(f"Failed to send broadcast to @{username}: {e}")
+
+                mark_processed("__broadcast__", trigger["index"])
+
+            # Handle per-user transactions (from transaction simulator)
             for username, chat_id in users.items():
                 triggers = get_unprocessed_triggers(username)
 
                 for trigger in triggers:
                     offer = trigger["offer"]
-                    merchant = trigger["merchant"]
-                    amount = trigger["amount"]
-
                     msg = offer["message"]
 
                     try:
-                        # Store proactive context in user's session for follow-up questions
                         from bot.services.session import set_proactive_context
-                        from bot.services.user_store import get_chat_id
                         set_proactive_context(chat_id, {
-                            "merchant": merchant,
-                            "amount": amount,
+                            "merchant": trigger["merchant"],
+                            "amount": trigger["amount"],
                             "category": trigger["pattern"],
                             "product": offer["product"],
                         })

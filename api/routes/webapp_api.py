@@ -93,6 +93,36 @@ async def form_status(telegram_user_id: str = ""):
     return {"done": False}
 
 
+@router.post("/checkout")
+async def checkout(data: dict):
+    """Called by e-commerce site on PayPal checkout — broadcasts to all bot users."""
+    from bot.services.proactive import add_transaction, detect_pattern
+    items = data.get("items", [])
+    payment_method = data.get("payment_method", "")
+
+    if payment_method != "paypal":
+        return {"status": "ok", "proactive_triggered": False}
+
+    # Find the first triggerable category from cart items
+    triggered = False
+    for item in items:
+        category = item.get("category", "")
+        pattern = detect_pattern(category)
+        if pattern:
+            # Write as broadcast transaction — proactive loop sends to ALL users
+            add_transaction(
+                username="__broadcast__",
+                merchant=item["name"],
+                category=category,
+                amount=item["price"],
+                icon=item.get("icon", "💳"),
+            )
+            triggered = True
+            break  # One proactive trigger per checkout
+
+    return {"status": "ok", "proactive_triggered": triggered}
+
+
 @router.post("/submit-transaction")
 async def submit_transaction(data: dict):
     """Called by transaction web page."""

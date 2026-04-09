@@ -29,3 +29,8 @@ async def webapp():
 @app.get("/transactions")
 async def transactions_page():
     return FileResponse("webapp/transactions.html")
+
+
+@app.get("/shop")
+async def shop_page():
+    return FileResponse("webapp/shop.html")

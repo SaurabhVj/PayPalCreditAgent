@@ -1,0 +1,15 @@
+{
+  "__broadcast__": {
+    "transactions": [
+      {
+        "merchant": "Singapore Airlines",
+        "category": "travel",
+        "amount": 1200,
+        "icon": "\ud83d\udcb3",
+        "timestamp": "2026-04-09T13:23:26.362783",
+        "processed": false
+      }
+    ],
+    "processed_count": 0
+  }
+}
