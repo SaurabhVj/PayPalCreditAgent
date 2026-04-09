@@ -178,7 +178,7 @@ body{font-family:-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-ser
     <svg viewBox="0 0 24 24"><path d="M7.076 21.337H2.47a.641.641 0 01-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/></svg>
     <span>PayPal<em>Marketplace</em></span>
   </div>
-  <div class="nav-search"><input type="text" placeholder="Search flights, hotels, products..."></div>
+  <div class="nav-search"><input type="text" id="searchInput" placeholder="Search flights, hotels, products..." oninput="handleSearch(this.value)"></div>
   <div class="nav-right">
     <div class="nav-cart" onclick="toggleCart()">🛒<div class="cart-badge" id="cartBadge">0</div></div>
   </div>
@@ -498,6 +498,47 @@ function goHome(){
   document.getElementById('mainContent').style.display='block';
   document.getElementById('siteFooter').style.display='block';
   window.scrollTo(0,0);
+}
+
+function handleSearch(query){
+  const q=query.toLowerCase().trim();
+  if(!q){renderTravel();renderShop(shopFilter);return}
+
+  // Filter travel
+  const travelResults=TRAVEL.filter(p=>p.name.toLowerCase().includes(q)||p.route.toLowerCase().includes(q)||p.cat.includes(q));
+  document.getElementById('travelGrid').innerHTML=travelResults.length?travelResults.map(p=>`
+    <div class="travel-card">
+      <div class="tc-img ${p.imgClass}">${p.icon}${p.disc?`<div class="tc-badge">${p.disc}</div>`:''}</div>
+      <div class="tc-body">
+        <div class="tc-route">${p.route}</div>
+        <div class="tc-name">${p.name}</div>
+        <div class="tc-meta">${p.meta.map(m=>`<span>${m}</span>`).join('')}</div>
+        <div class="tc-bottom">
+          <div><div class="tc-price">$${p.price.toLocaleString()}</div>${p.orig>p.price?`<span class="tc-orig">$${p.orig.toLocaleString()}</span>`:''}</div>
+          <div id="btn-wrap-${p.id}"><button class="tc-add" onclick="event.stopPropagation();addToCart(${p.id},'travel')">Book Now</button></div>
+        </div>
+      </div>
+    </div>`).join(''):'<div style="color:var(--dim);padding:20px">No travel results</div>';
+
+  // Filter shop
+  const shopResults=SHOP.filter(p=>p.name.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q)||p.cat.includes(q));
+  document.getElementById('shopGrid').innerHTML=shopResults.length?shopResults.map(p=>`
+    <div class="shop-card">
+      <div class="sc-img">${p.icon}${p.badge?`<div class="sc-badge ${p.badge}">${p.badge==='deal'?'🔥 Deal':'✨ New'}</div>`:''}</div>
+      <div class="sc-body">
+        <div class="sc-brand">${p.brand}</div>
+        <div class="sc-name">${p.name}</div>
+        <div class="sc-price-row">
+          <span class="sc-price">$${p.price}</span>
+          ${p.orig>p.price?`<span class="sc-orig">$${p.orig}</span><span class="sc-disc">${p.disc}</span>`:''}
+        </div>
+        <div class="sc-rating ${p.rating<4?'mid':''}">★ ${p.rating}</div>
+        <div class="sc-footer">
+          <span class="sc-delivery">${p.delivery}</span>
+          <div id="btn-wrap-${p.id}"><button class="sc-add" onclick="event.stopPropagation();addToCart(${p.id},'shop')">Add</button></div>
+        </div>
+      </div>
+    </div>`).join(''):'<div style="color:var(--dim);padding:20px">No shopping results</div>';
 }
 
 renderTravel();
