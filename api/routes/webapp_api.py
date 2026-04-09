@@ -70,6 +70,14 @@ async def apply(offer_index: int = 0):
     }
 
 
+@router.get("/registered-users")
+async def registered_users():
+    """View all registered bot users (username → chat_id)."""
+    from bot.services.user_store import get_all_users
+    users = get_all_users()
+    return {"count": len(users), "users": users}
+
+
 @router.get("/test-llm")
 async def test_llm(q: str = "recommend a travel card"):
     from bot.services.llm_service import ask_llm
