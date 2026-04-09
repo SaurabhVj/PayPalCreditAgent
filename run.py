@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 async def main():
     # Wait for old instance to shut down (Render zero-downtime deploy overlap)
-    logger.info("Waiting 10s for old instance to release polling...")
-    await asyncio.sleep(10)
+    logger.info("Waiting 15s for old instance to release polling...")
+    await asyncio.sleep(15)
 
     # Start bot
     bot_app = create_bot()
