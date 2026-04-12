@@ -487,6 +487,11 @@ async function placeOrder(){
       document.getElementById('osDetail').textContent=`${cart.length} item(s) · $${total.toLocaleString()} · via PayPal`;
       document.getElementById('osProactive').style.display='none';
       document.getElementById('orderSuccess').classList.add('show');
+      // Reset all product buttons back to "Add" / "Book Now"
+      cart.forEach(i=>{
+        const source=TRAVEL.find(x=>x.id===i.id)?'travel':'shop';
+        renderAddButton(i.id,source);
+      });
       cart=[];updateCart();
     },1000);
   }catch(e){btn.textContent='Error — Try Again';btn.disabled=false}
