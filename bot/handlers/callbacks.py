@@ -162,8 +162,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "proactive:no":
         await query.message.reply_text("No worries! I'll be here if you change your mind. 😊")
 
-    elif data == "proactive:apply":
-        await _handle_credit_start(query, user_id)
+    elif data.startswith("proactive:apply"):
+        pattern = data.split(":")[2] if len(data.split(":")) > 2 else "travel"
+        await _handle_proactive_apply(query, user_id, pattern)
+
+    elif data.startswith("proactive:submit"):
+        await _handle_proactive_submit(query, user_id)
 
 
 # ── STEP 1: Show auth card ──
@@ -514,15 +518,176 @@ async def _handle_proactive_offer(query, user_id: int, pattern: str):
 
     offer = offers.get(pattern, offers["travel"])
 
+    # Store proactive product in session for the apply flow
+    from bot.services.session import get_session
+    get_session(user_id)["proactive_product"] = offer
+
     await query.message.reply_text(
         offer["details"],
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Yes, apply now", callback_data="proactive:apply")],
+            [InlineKeyboardButton(f"✅ Apply for {offer['name']}", callback_data=f"proactive:apply:{pattern}")],
             [InlineKeyboardButton("ℹ️ Compare with other cards", callback_data="topic:portfolio")],
             [InlineKeyboardButton("❌ Maybe later", callback_data="proactive:no")],
         ]),
     )
+
+
+async def _handle_proactive_submit(query, user_id: int):
+    """Submit application for the proactive product."""
+    from bot.services.session import get_session
+    session = get_session(user_id)
+    product = session.get("proactive_product", {})
+    product_name = product.get("name", "PayPal Credit Card")
+    product_limit = product.get("limit", "$5,000")
+    name = session.get("name", "User")
+
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await query.message.reply_text("⏳ _Processing your application..._", parse_mode="Markdown")
+    await asyncio.sleep(2.5)
+
+    set_state(user_id, FlowState.APPROVED)
+    await query.message.reply_text(
+        f"🎊 *Approved, {name}!*\n\n"
+        f"Your *{product_name}* is active.\n\n"
+        f"💳 Credit Limit: *{product_limit}*\n"
+        f"⏱ Decision Time: *3.1 seconds*\n"
+        f"📋 Status: _Active_\n\n"
+        f"📲 All done inside Telegram — no app downloads, no redirects. "
+        f"That's Agentic Commerce.\n\n"
+        f"What would you like to do next?",
+        parse_mode="Markdown",
+        reply_markup=post_approval_keyboard(),
+    )
+
+
+async def _handle_proactive_apply(query, user_id: int, pattern: str):
+    """Apply for the specific proactive product — skip generic offers."""
+    from bot.services.session import get_session
+    session = get_session(user_id)
+    product = session.get("proactive_product", {})
+    product_name = product.get("name", "PayPal Credit Card")
+
+    # Mark this as a proactive application flow
+    session["proactive_apply"] = True
+
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await asyncio.sleep(0.5)
+
+    await query.message.reply_text(
+        f"Great choice! Let's get you the *{product_name}*.\n\n"
+        "First, let me securely connect your PayPal account. 🔒",
+        parse_mode="Markdown",
+    )
+    await asyncio.sleep(0.5)
+
+    login_url = f"{WEBAPP_URL}/webapp?mode=login"
+    await query.message.reply_text(
+        "🔐 *Connect PayPal*\n"
+        "━━━━━━━━━━━━━━━━━\n"
+        "Sign in with your PayPal account to\n"
+        f"apply for *{product_name}*.\n\n"
+        "🔒 Secure OAuth — we never see your password.",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔐 Connect with PayPal", web_app=WebAppInfo(url=login_url))],
+        ]),
+    )
+
+    # Poll for login → then skip offers, go straight to form → confirm
+    asyncio.create_task(_poll_login_proactive(query, user_id, pattern))
+
+
+async def _poll_login_proactive(query, user_id: int, pattern: str):
+    """Poll for login, then go straight to form → confirm for the proactive product."""
+    import httpx
+
+    for _ in range(30):
+        await asyncio.sleep(2)
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{WEBAPP_URL}/api/login-status?telegram_user_id={user_id}")
+                data = resp.json()
+                if data.get("done"):
+                    from bot.services.session import get_session
+                    session = get_session(user_id)
+                    session["name"] = data["name"]
+                    session["email"] = data["email"]
+                    product = session.get("proactive_product", {})
+                    product_name = product.get("name", "PayPal Credit Card")
+                    product_limit = product.get("limit", "$5,000")
+
+                    await query.message.reply_text(
+                        f"✅ *PayPal account connected!*\n\n"
+                        f"👤 *{data['name']}*\n"
+                        f"📧 {data['email']}",
+                        parse_mode="Markdown",
+                    )
+                    await asyncio.sleep(1)
+
+                    # Show form for this specific product
+                    form_url = f"{WEBAPP_URL}/webapp?mode=form&name={data['name']}&email={data['email']}"
+                    await query.message.reply_text(
+                        f"📋 *Application for {product_name}*\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        "19 of 20 fields pre-filled from your PayPal profile.\n\n"
+                        "✏️ *Missing: PAN / SSN last 4 digits*\n\n"
+                        "_Tap below to review and submit:_",
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("📝 Complete Application", web_app=WebAppInfo(url=form_url))],
+                        ]),
+                    )
+
+                    # Poll for form → then confirm for this specific product
+                    asyncio.create_task(_poll_form_proactive(query, user_id, pattern))
+                    return
+        except Exception:
+            pass
+
+
+async def _poll_form_proactive(query, user_id: int, pattern: str):
+    """Poll for form completion → show confirm for the proactive product."""
+    import httpx
+
+    for _ in range(60):
+        await asyncio.sleep(2)
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{WEBAPP_URL}/api/form-status?telegram_user_id={user_id}")
+                data = resp.json()
+                if data.get("done"):
+                    from bot.services.session import get_session
+                    session = get_session(user_id)
+                    product = session.get("proactive_product", {})
+                    product_name = product.get("name", "PayPal Credit Card")
+                    product_limit = product.get("limit", "$5,000")
+                    name = session.get("name", "User")
+
+                    await query.message.reply_text(
+                        "✅ *Application form complete!*",
+                        parse_mode="Markdown",
+                    )
+                    await asyncio.sleep(0.5)
+
+                    # Confirm card for this specific product
+                    await query.message.reply_text(
+                        f"✅ *Application Ready*\n"
+                        f"━━━━━━━━━━━━━━━━━\n"
+                        f"Product: *{product_name}*\n"
+                        f"Credit Limit: *{product_limit}*\n"
+                        f"Applicant: {name}\n"
+                        f"Channel: Telegram\n"
+                        f"Decision: _Instant · ~3s_\n\n"
+                        f"Tap Submit to apply:",
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("✅ Submit Application", callback_data=f"proactive:submit:{pattern}")],
+                        ]),
+                    )
+                    return
+        except Exception:
+            pass
 
 
 async def _handle_portfolio(query):
