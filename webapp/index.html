@@ -45,13 +45,12 @@
   <!-- DUMMY LOGIN OVERLAY -->
   <div class="login-overlay" id="loginOverlay">
     <div class="login-card">
-      <div class="login-logo">
-        <svg viewBox="0 0 100 32" width="100" height="32" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12.5 4h7.5c4.3 0 7.2 1.7 6.5 6.3-.8 5.2-4.5 7.7-9 7.7h-2.2c-.5 0-1 .4-1.1.9L13 26H8.5c-.4 0-.6-.3-.5-.7L11.5 5c.1-.5.5-.9 1-.9z" fill="#003087"/>
-          <path d="M15.5 2h7.5c4.3 0 7.2 1.7 6.5 6.3-.8 5.2-4.5 7.7-9 7.7h-2.2c-.5 0-1 .4-1.1.9L16 24h-4.5c-.4 0-.6-.3-.5-.7L14.5 3c.1-.5.5-.9 1-.9z" fill="#0070ba"/>
-          <text x="38" y="23" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#003087">Pay</text>
-          <text x="63" y="23" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#0070ba">Pal</text>
+      <div class="login-logo" style="display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg viewBox="0 0 24 28" width="32" height="36" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7.4 23.3H3.5c-.4 0-.6-.3-.5-.7L6.2 3.2c.1-.5.5-.9 1-.9h7c3.8 0 6.5 1.5 5.9 5.6-.7 4.6-4 6.8-8 6.8H10c-.5 0-.9.4-1 .8L7.4 23.3z" fill="#003087"/>
+          <path d="M9.6 21h-3c-.3 0-.5-.3-.5-.6l2.5-15.8c.1-.5.5-.8.9-.8h6.3c3.5 0 6 1.4 5.4 5.2-.7 4.3-3.7 6.3-7.4 6.3h-2c-.4 0-.8.3-.9.8L9.6 21z" fill="#0070ba"/>
         </svg>
+        <span style="font-size:24px;font-weight:700;letter-spacing:-0.5px"><span style="color:#003087">Pay</span><span style="color:#0070ba">Pal</span></span>
       </div>
       <div class="login-title">Log in to PayPal</div>
       <input class="login-input" id="loginEmail" type="email" placeholder="Email or mobile number" value="">
