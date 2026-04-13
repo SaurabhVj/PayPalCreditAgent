@@ -462,56 +462,114 @@ async def _handle_proactive_offer(query, user_id: int, pattern: str):
 
     offers = {
         "travel": {
-            "name": "PayPal Miles+",
-            "limit": "$22,000",
-            "highlight": "75,000 sign-up miles",
+            "name": "Venmo Visa Signature Credit Card",
+            "limit": "Based on creditworthiness",
             "details": (
-                "✈️ *PayPal Miles+*\n"
+                "✈️ *Venmo Visa Signature Credit Card*\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "💳 Credit Limit: *$22,000*\n"
-                "🎁 Sign-up Bonus: *75,000 miles*\n"
-                "✈️ Earn Rate: *3x miles on travel*\n"
-                "🍽 Dining: *2x miles*\n"
-                "🏦 Annual Fee: *$99* (waived Year 1)\n"
-                "💱 FX Fees: *None*\n"
-                "🛋 Lounge Access: *Priority Pass included*\n\n"
-                "Based on your travel spending, you'd earn\n"
-                "approximately *$412/year* in rewards.\n\n"
-                "Want to apply? I can pre-fill 90% of the form."
-            ),
-        },
-        "baby": {
-            "name": "PayPal Family Rewards",
-            "limit": "$30,000",
-            "highlight": "5% childcare cashback",
-            "details": (
-                "👶 *PayPal Family Rewards*\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "💳 Credit Limit: *$30,000*\n"
-                "🍼 Childcare: *5% cashback* (up to $5,000/mo)\n"
-                "🛒 Groceries: *3% cashback* unlimited\n"
-                "👶 Baby Stores: *4% at partner retailers*\n"
-                "🏦 Annual Fee: *$0* first year\n\n"
-                "Based on your family spending patterns,\n"
-                "you'd earn approximately *$1,500/year* in cashback.\n\n"
+                "💳 *Auto-detected top category rewards:*\n"
+                "✈️ Travel (your top): *3% cashback*\n"
+                "🍽 Second category: *2% cashback*\n"
+                "🛍 Everything else: *1% cashback*\n\n"
+                "🏦 Annual Fee: *$0*\n"
+                "📱 Apple Pay, Google Pay, Samsung Pay\n"
+                "🪙 Auto-purchase crypto with cashback\n"
+                "🔒 Visa Signature benefits included\n\n"
+                "No categories to track — your top spending\n"
+                "category is detected *automatically* each month.\n\n"
                 "Want to apply? I can pre-fill 90% of the form."
             ),
         },
         "dining": {
-            "name": "PayPal Cashback Mastercard",
-            "limit": "$5,000",
-            "highlight": "3% dining cashback",
+            "name": "Venmo Visa Signature Credit Card",
+            "limit": "Based on creditworthiness",
             "details": (
-                "🍽 *PayPal Cashback Mastercard*\n"
+                "🍽 *Venmo Visa Signature Credit Card*\n"
                 "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "💳 Credit Limit: *$5,000*\n"
-                "🍽 Dining: *3% cashback*\n"
-                "🛒 Everything else: *2% cashback*\n"
-                "🏦 Annual Fee: *$0 forever*\n\n"
-                "Based on your dining spending,\n"
-                "you'd earn approximately *$84/year* in dining cashback\n"
-                "plus *$172/year* on other purchases.\n\n"
+                "💳 *Auto-detected top category rewards:*\n"
+                "🍽 Dining (your top): *3% cashback*\n"
+                "🛒 Second category: *2% cashback*\n"
+                "🛍 Everything else: *1% cashback*\n\n"
+                "🏦 Annual Fee: *$0*\n"
+                "📱 Digital wallet compatible\n"
+                "🔒 Zero liability for unauthorized use\n\n"
+                "Covers restaurants, carry-out, delivery,\n"
+                "bars, and coffee shops — *automatically*.\n\n"
                 "Want to apply? I can pre-fill 90% of the form."
+            ),
+        },
+        "groceries": {
+            "name": "PayPal Debit Mastercard",
+            "limit": "PayPal Balance",
+            "details": (
+                "🛒 *PayPal Debit Mastercard*\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "💳 *Choose your 5% category each month:*\n"
+                "🛒 Groceries: *5% cashback* (up to $1,000/mo)\n"
+                "⛽ Also available: Fuel, Restaurants, Apparel\n\n"
+                "🏦 No monthly fee · No minimum balance\n"
+                "🏧 Free ATM at MoneyPass locations\n"
+                "📱 Apple Pay, Google Pay, Samsung Pay\n"
+                "✅ No credit check required\n\n"
+                "Pick groceries as your monthly category and\n"
+                "earn *5% back on every grocery run*.\n\n"
+                "Want to get started?"
+            ),
+        },
+        "electronics": {
+            "name": "PayPal Credit Card",
+            "limit": "Based on creditworthiness",
+            "details": (
+                "📱 *PayPal Credit Card*\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "💳 *Special Financing:*\n"
+                "🎯 *0% APR for 6 months* on purchases $149+\n"
+                "🛍 Use everywhere Mastercard is accepted\n\n"
+                "🏦 Annual Fee: *$0*\n"
+                "🔒 Mastercard ID Theft Protection\n"
+                "📱 Instant virtual card on approval\n"
+                "🛡 PayPal Buyer Protection\n\n"
+                "Perfect for big-ticket electronics —\n"
+                "spread the cost *interest-free for 6 months*.\n\n"
+                "Want to apply? I can pre-fill 90% of the form."
+            ),
+        },
+        "baby": {
+            "name": "PayPal Cashback Mastercard",
+            "limit": "Based on creditworthiness",
+            "details": (
+                "👶 *PayPal Cashback Mastercard*\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "💳 *Unlimited cashback:*\n"
+                "🛒 PayPal purchases: *3% cashback*\n"
+                "🌍 Everything else: *1.5% cashback*\n\n"
+                "🏦 Annual Fee: *$0 forever*\n"
+                "📱 Apple Pay, Google Pay, Samsung Pay\n"
+                "🔒 Mastercard ID Theft Protection\n"
+                "👥 Up to 6 authorized users\n\n"
+                "Great for family spending — earn *3% back*\n"
+                "on baby essentials bought via PayPal checkout,\n"
+                "and *1.5% on everything else*.\n\n"
+                "Want to apply? I can pre-fill 90% of the form."
+            ),
+        },
+        "school": {
+            "name": "Venmo Teen Account",
+            "limit": "Parent-funded balance",
+            "details": (
+                "🎒 *Venmo Teen Account*\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "👨‍👩‍👧 *For teens ages 13-17:*\n"
+                "💳 Their own Venmo debit card\n"
+                "👀 You see every transaction in your app\n"
+                "🔒 Set spending limits & freeze card anytime\n"
+                "💸 Send them money instantly from your Venmo\n\n"
+                "🏦 No monthly fee\n"
+                "📱 Works with their own Venmo app\n"
+                "✅ No credit check\n\n"
+                "Give your teen financial independence\n"
+                "with *full parental oversight*.\n\n"
+                "Want to set one up?"
             ),
         },
     }

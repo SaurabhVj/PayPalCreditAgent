@@ -11,46 +11,79 @@ logger = logging.getLogger(__name__)
 DATA_DIR = "data"
 TXNS_FILE = os.path.join(DATA_DIR, "transactions.json")
 
-# Merchant → category patterns for proactive offers
-TRAVEL_KEYWORDS = ["airline", "emirates", "singapore air", "booking.com", "marriott", "hotel", "flight", "airport"]
-BABY_KEYWORDS = ["firstcry", "mothercare", "babycenter", "paediatric", "pediatric", "dr. mehta", "childcare"]
-DINING_KEYWORDS = ["uber eats", "doordash", "starbucks", "restaurant", "cafe", "zomato", "swiggy"]
-
-# Proactive offer templates
+# Proactive offer templates — mapped to real PayPal/Venmo products
 OFFERS = {
     "travel": {
         "emoji": "✈️",
         "message": (
             "Hi! 👋 I noticed you just made a travel booking — exciting trip coming up!\n\n"
-            "Quick thought: You could be earning *free lounge access + 3x miles* on that purchase "
-            "with the right credit card.\n\n"
-            "Want me to show you a 60-second option?"
+            "Did you know the *Venmo Visa Signature Card* automatically gives you "
+            "*3% cashback on your top spending category*? With your travel spend, "
+            "that's your top category — earning you 3% back automatically.\n\n"
+            "Want me to show you the details?"
         ),
-        "product": "PayPal Miles+",
-        "highlight": "75,000 sign-up miles + Priority Pass lounge access",
-    },
-    "baby": {
-        "emoji": "👶",
-        "message": (
-            "Hi! 👋 Congratulations — it looks like your family is growing! 🍼\n\n"
-            "I noticed some family-related purchases, and I wanted to share a card "
-            "designed specifically for young families — with *5% cashback on childcare* "
-            "and *3% on groceries*.\n\n"
-            "Want to see if you're pre-approved?"
-        ),
-        "product": "PayPal Family Rewards",
-        "highlight": "5% childcare cashback + 3% groceries",
+        "product": "Venmo Visa Signature Credit Card",
+        "highlight": "3% auto cashback on top category · $0 annual fee",
     },
     "dining": {
         "emoji": "🍽",
         "message": (
             "Hi! 👋 I see you love dining out — great taste! 🍔\n\n"
-            "Did you know you could earn *3% cashback on all dining* with the right card? "
-            "Based on your spending, that's about *$84/year back in your pocket*.\n\n"
+            "The *Venmo Visa Signature Card* automatically detects your top spending category "
+            "and gives you *3% cashback*. With your dining spend, that means "
+            "*3% back on every meal, delivery, and coffee run* — automatically.\n\n"
             "Want me to show you the details?"
         ),
+        "product": "Venmo Visa Signature Credit Card",
+        "highlight": "3% auto cashback on dining · $0 annual fee",
+    },
+    "groceries": {
+        "emoji": "🛒",
+        "message": (
+            "Hi! 👋 I noticed you're stocking up on groceries! 🛒\n\n"
+            "Did you know the *PayPal Debit Mastercard* lets you choose a category "
+            "each month to earn *5% cashback*? Select groceries as your monthly category "
+            "and earn 5% back on every grocery run — up to $1,000/month in spend.\n\n"
+            "Want me to show you how it works?"
+        ),
+        "product": "PayPal Debit Mastercard",
+        "highlight": "5% cashback on chosen category each month · No credit check",
+    },
+    "electronics": {
+        "emoji": "📱",
+        "message": (
+            "Hi! 👋 I noticed you're shopping for electronics — nice pick! 📱\n\n"
+            "Big purchases like this are perfect for the *PayPal Credit Card* — "
+            "you get *0% APR for 6 months* on purchases of $149 or more. "
+            "That means you can spread the cost interest-free.\n\n"
+            "Want me to show you the details?"
+        ),
+        "product": "PayPal Credit Card",
+        "highlight": "0% APR for 6 months on $149+ · $0 annual fee",
+    },
+    "baby": {
+        "emoji": "👶",
+        "message": (
+            "Hi! 👋 It looks like you're shopping for the family! 🍼\n\n"
+            "The *PayPal Cashback Mastercard* earns you *3% cashback* on every "
+            "purchase made through PayPal checkout — including baby essentials, "
+            "diapers, and childcare supplies. Plus *1.5% back everywhere else*.\n\n"
+            "Want to see if you're eligible?"
+        ),
         "product": "PayPal Cashback Mastercard",
-        "highlight": "3% dining cashback + 2% everywhere else",
+        "highlight": "3% on PayPal purchases · 1.5% everywhere else · $0 fee",
+    },
+    "school": {
+        "emoji": "🎒",
+        "message": (
+            "Hi! 👋 I noticed you're shopping for school essentials! 📚\n\n"
+            "Did you know *Venmo offers a Teen Account* for ages 13-17? "
+            "Your child gets their own supervised debit card with spending limits "
+            "and you can monitor every transaction from your Venmo app.\n\n"
+            "Want me to show you how it works?"
+        ),
+        "product": "Venmo Teen Account",
+        "highlight": "Supervised debit card · Parental controls · Ages 13-17",
     },
 }
 
@@ -95,14 +128,14 @@ def add_transaction(username: str, merchant: str, category: str, amount: float, 
     return {"status": "ok", "proactive_triggered": triggered is not None, "pattern": triggered}
 
 
+TRIGGER_CATEGORIES = {"travel", "dining", "groceries", "electronics", "baby", "school"}
+NON_TRIGGER_CATEGORIES = {"fashion", "entertainment"}
+
+
 def detect_pattern(category: str) -> str | None:
     """Detect which proactive offer to trigger based on category."""
-    if category == "travel":
-        return "travel"
-    elif category == "baby":
-        return "baby"
-    elif category == "dining":
-        return "dining"
+    if category in TRIGGER_CATEGORIES:
+        return category
     return None
 
 

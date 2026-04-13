@@ -214,11 +214,13 @@ body{font-family:-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-ser
       <div><h2>🛍 Shopping</h2><p>Top deals across categories</p></div>
       <div class="section-tabs" id="shopTabs">
         <div class="section-tab active" onclick="filterShop('all')">All</div>
-        <div class="section-tab" onclick="filterShop('baby')">👶 Baby Care</div>
         <div class="section-tab" onclick="filterShop('dining')">🍽 Dining</div>
-        <div class="section-tab" onclick="filterShop('fashion')">👟 Fashion</div>
+        <div class="section-tab" onclick="filterShop('groceries')">🛒 Groceries</div>
         <div class="section-tab" onclick="filterShop('electronics')">📱 Electronics</div>
-        <div class="section-tab" onclick="filterShop('lifestyle')">🏠 Lifestyle</div>
+        <div class="section-tab" onclick="filterShop('baby')">👶 Baby & Family</div>
+        <div class="section-tab" onclick="filterShop('school')">🎒 School Essentials</div>
+        <div class="section-tab" onclick="filterShop('fashion')">👟 Fashion</div>
+        <div class="section-tab" onclick="filterShop('entertainment')">🎬 Entertainment</div>
       </div>
     </div>
     <div class="shop-grid" id="shopGrid"></div>
@@ -290,27 +292,39 @@ const TRAVEL=[
 ];
 
 const SHOP=[
-  // Baby
-  {id:10,name:'Baby Essentials Kit — FirstCry',brand:'FirstCry',price:85,orig:120,disc:'29% off',rating:4.4,reviews:5670,icon:'👶',cat:'baby',badge:'deal',delivery:'Free delivery'},
-  {id:11,name:'Stroller Pro — Foldable',brand:'Mothercare',price:320,orig:450,disc:'29% off',rating:4.6,reviews:890,icon:'🍼',cat:'baby',badge:'',delivery:'2-day delivery'},
-  {id:12,name:'Premium Diapers Mega Pack',brand:'Pampers',price:45,orig:60,disc:'25% off',rating:4.3,reviews:12400,icon:'🧸',cat:'baby',badge:'deal',delivery:'Free delivery'},
-  {id:13,name:'WiFi Baby Monitor HD',brand:'VTech',price:120,orig:180,disc:'33% off',rating:4.2,reviews:2340,icon:'📹',cat:'baby',badge:'new',delivery:'3-day delivery'},
   // Dining
-  {id:20,name:'Gift Card $100',brand:'Uber Eats',price:100,orig:100,disc:'',rating:4.5,reviews:8900,icon:'🍔',cat:'dining',badge:'',delivery:'Instant delivery'},
-  {id:21,name:'Annual DashPass',brand:'DoorDash',price:96,orig:120,disc:'20% off',rating:4.1,reviews:3400,icon:'🍕',cat:'dining',badge:'deal',delivery:'Instant activation'},
-  {id:22,name:'Premium Coffee Bundle',brand:'Starbucks',price:55,orig:75,disc:'27% off',rating:4.6,reviews:6700,icon:'☕',cat:'dining',badge:'',delivery:'3-day delivery'},
-  {id:23,name:'Restaurant Voucher $100',brand:'Restaurant.com',price:50,orig:100,disc:'50% off',rating:3.9,reviews:1200,icon:'🍽',cat:'dining',badge:'deal',delivery:'Instant delivery'},
-  // Fashion
-  {id:30,name:'Air Max 270',brand:'Nike',price:129,orig:160,disc:'19% off',rating:4.5,reviews:34000,icon:'👟',cat:'fashion',badge:'',delivery:'Free delivery'},
-  {id:31,name:'501 Original Jeans',brand:"Levi's",price:69,orig:89,disc:'22% off',rating:4.3,reviews:18000,icon:'👖',cat:'fashion',badge:'deal',delivery:'3-day delivery'},
-  {id:32,name:'Aviator Classic',brand:'Ray-Ban',price:154,orig:170,disc:'9% off',rating:4.6,reviews:21000,icon:'🕶',cat:'fashion',badge:'',delivery:'Free delivery'},
+  {id:10,name:'Gift Card $100',brand:'Uber Eats',price:100,orig:100,disc:'',rating:4.5,reviews:8900,icon:'🍔',cat:'dining',badge:'',delivery:'Instant delivery'},
+  {id:11,name:'Annual DashPass',brand:'DoorDash',price:96,orig:120,disc:'20% off',rating:4.1,reviews:3400,icon:'🍕',cat:'dining',badge:'deal',delivery:'Instant activation'},
+  {id:12,name:'Premium Coffee Bundle',brand:'Starbucks',price:55,orig:75,disc:'27% off',rating:4.6,reviews:6700,icon:'☕',cat:'dining',badge:'',delivery:'3-day delivery'},
+  {id:13,name:'Restaurant Voucher $100',brand:'Restaurant.com',price:50,orig:100,disc:'50% off',rating:3.9,reviews:1200,icon:'🍽',cat:'dining',badge:'deal',delivery:'Instant delivery'},
+  // Groceries
+  {id:20,name:'Weekly Grocery Box — Family',brand:'Walmart',price:89,orig:110,disc:'19% off',rating:4.3,reviews:15600,icon:'🛒',cat:'groceries',badge:'deal',delivery:'Same-day delivery'},
+  {id:21,name:'Organic Essentials Bundle',brand:'Whole Foods',price:65,orig:80,disc:'19% off',rating:4.5,reviews:8200,icon:'🥦',cat:'groceries',badge:'',delivery:'2-hour delivery'},
+  {id:22,name:'Bulk Pantry Pack — 30 items',brand:'Costco',price:145,orig:190,disc:'24% off',rating:4.4,reviews:12300,icon:'📦',cat:'groceries',badge:'deal',delivery:'Free delivery'},
+  {id:23,name:'Fresh Produce Box',brand:'FreshDirect',price:42,orig:55,disc:'24% off',rating:4.2,reviews:4500,icon:'🍎',cat:'groceries',badge:'',delivery:'Next-day delivery'},
   // Electronics
-  {id:40,name:'iPhone 16 Pro — 256GB',brand:'Apple',price:1199,orig:1199,disc:'',rating:4.8,reviews:45000,icon:'📱',cat:'electronics',badge:'new',delivery:'Free delivery'},
-  {id:41,name:'WH-1000XM5 Headphones',brand:'Sony',price:348,orig:400,disc:'13% off',rating:4.7,reviews:23000,icon:'🎧',cat:'electronics',badge:'',delivery:'2-day delivery'},
-  {id:42,name:'Galaxy Watch 6',brand:'Samsung',price:249,orig:329,disc:'24% off',rating:4.4,reviews:8900,icon:'⌚',cat:'electronics',badge:'deal',delivery:'Free delivery'},
-  // Lifestyle
-  {id:50,name:'Dyson V15 Vacuum',brand:'Dyson',price:649,orig:749,disc:'13% off',rating:4.7,reviews:5600,icon:'🏠',cat:'lifestyle',badge:'',delivery:'Free delivery'},
-  {id:51,name:'Kindle Paperwhite',brand:'Amazon',price:139,orig:150,disc:'7% off',rating:4.6,reviews:42000,icon:'📚',cat:'lifestyle',badge:'',delivery:'2-day delivery'},
+  {id:30,name:'iPhone 16 Pro — 256GB',brand:'Apple',price:1199,orig:1199,disc:'',rating:4.8,reviews:45000,icon:'📱',cat:'electronics',badge:'new',delivery:'Free delivery'},
+  {id:31,name:'MacBook Air M3 — 15"',brand:'Apple',price:1299,orig:1399,disc:'7% off',rating:4.8,reviews:18000,icon:'💻',cat:'electronics',badge:'',delivery:'Free delivery'},
+  {id:32,name:'WH-1000XM5 Headphones',brand:'Sony',price:348,orig:400,disc:'13% off',rating:4.7,reviews:23000,icon:'🎧',cat:'electronics',badge:'',delivery:'2-day delivery'},
+  {id:33,name:'Galaxy Watch 6',brand:'Samsung',price:249,orig:329,disc:'24% off',rating:4.4,reviews:8900,icon:'⌚',cat:'electronics',badge:'deal',delivery:'Free delivery'},
+  // Baby & Family
+  {id:40,name:'Baby Essentials Kit',brand:'FirstCry',price:85,orig:120,disc:'29% off',rating:4.4,reviews:5670,icon:'👶',cat:'baby',badge:'deal',delivery:'Free delivery'},
+  {id:41,name:'Stroller Pro — Foldable',brand:'Mothercare',price:320,orig:450,disc:'29% off',rating:4.6,reviews:890,icon:'🍼',cat:'baby',badge:'',delivery:'2-day delivery'},
+  {id:42,name:'Premium Diapers Mega Pack',brand:'Pampers',price:45,orig:60,disc:'25% off',rating:4.3,reviews:12400,icon:'🧸',cat:'baby',badge:'deal',delivery:'Free delivery'},
+  {id:43,name:'WiFi Baby Monitor HD',brand:'VTech',price:120,orig:180,disc:'33% off',rating:4.2,reviews:2340,icon:'📹',cat:'baby',badge:'new',delivery:'3-day delivery'},
+  // School Essentials
+  {id:50,name:'Student Laptop — ChromeBook',brand:'HP',price:249,orig:299,disc:'17% off',rating:4.3,reviews:9800,icon:'💻',cat:'school',badge:'deal',delivery:'Free delivery'},
+  {id:51,name:'Backpack — Teen Edition',brand:'JanSport',price:45,orig:60,disc:'25% off',rating:4.5,reviews:14500,icon:'🎒',cat:'school',badge:'',delivery:'3-day delivery'},
+  {id:52,name:'Scientific Calculator',brand:'Texas Instruments',price:35,orig:45,disc:'22% off',rating:4.6,reviews:22000,icon:'🔢',cat:'school',badge:'',delivery:'Free delivery'},
+  {id:53,name:'School Supplies Mega Pack',brand:'Staples',price:28,orig:40,disc:'30% off',rating:4.2,reviews:6700,icon:'✏️',cat:'school',badge:'deal',delivery:'2-day delivery'},
+  // Fashion (no trigger)
+  {id:60,name:'Air Max 270',brand:'Nike',price:129,orig:160,disc:'19% off',rating:4.5,reviews:34000,icon:'👟',cat:'fashion',badge:'',delivery:'Free delivery'},
+  {id:61,name:'501 Original Jeans',brand:"Levi's",price:69,orig:89,disc:'22% off',rating:4.3,reviews:18000,icon:'👖',cat:'fashion',badge:'deal',delivery:'3-day delivery'},
+  {id:62,name:'Aviator Classic',brand:'Ray-Ban',price:154,orig:170,disc:'9% off',rating:4.6,reviews:21000,icon:'🕶',cat:'fashion',badge:'',delivery:'Free delivery'},
+  // Entertainment (no trigger)
+  {id:70,name:'PlayStation 5 Slim',brand:'Sony',price:449,orig:499,disc:'10% off',rating:4.7,reviews:32000,icon:'🎮',cat:'entertainment',badge:'deal',delivery:'Free delivery'},
+  {id:71,name:'Spotify Premium — 1 Year',brand:'Spotify',price:99,orig:120,disc:'18% off',rating:4.5,reviews:28000,icon:'🎵',cat:'entertainment',badge:'',delivery:'Instant activation'},
+  {id:72,name:'Netflix Gift Card $100',brand:'Netflix',price:100,orig:100,disc:'',rating:4.6,reviews:15000,icon:'🎬',cat:'entertainment',badge:'',delivery:'Instant delivery'},
 ];
 
 let cart=[];
@@ -336,7 +350,7 @@ function renderShop(filter){
   shopFilter=filter;
   document.querySelectorAll('.section-tab').forEach(t=>t.classList.remove('active'));
   const tabs=document.getElementById('shopTabs').children;
-  const idx=['all','baby','dining','fashion','electronics','lifestyle'].indexOf(filter);
+  const idx=['all','dining','groceries','electronics','baby','school','fashion','entertainment'].indexOf(filter);
   if(tabs[idx])tabs[idx].classList.add('active');
 
   const items=filter==='all'?SHOP:SHOP.filter(p=>p.cat===filter);
