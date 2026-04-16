@@ -26,17 +26,20 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
 
-    # Store username for proactive messaging
+    # Store user in cache + DB
     if user.username:
         store_user(user.username.lower(), user_id)
-
-    # Store message in session history
-    add_message(user_id, "user", text)
-
-    # Store in DB if available
     try:
-        from bot.services.database import add_message as db_add_message
-        await db_add_message(user_id, "user", text)
+        from bot.services.user_store import store_user_db
+        await store_user_db(user_id, user.username or "", user.first_name or "", "")
+    except Exception:
+        pass
+
+    # Store message in session + DB
+    add_message(user_id, "user", text)
+    try:
+        from bot.services.database import add_message as db_add_msg
+        await db_add_msg(user_id, "user", text)
     except Exception:
         pass
 
@@ -69,6 +72,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if result.message:
         await update.message.reply_text(result.message)
         add_message(user_id, "assistant", result.message)
+        try:
+            from bot.services.database import add_message as db_add_msg
+            await db_add_msg(user_id, "assistant", result.message)
+        except Exception:
+            pass
 
     # 3. Show product cards (shopping)
     if result.products:

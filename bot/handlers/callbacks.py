@@ -251,12 +251,18 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         from bot.services.catalog import get_catalog
         p = get_catalog().get_product(product_id)
         name = p["name"] if p else "Item"
-        # Store in session wishlist
+        # Store in session
         session = get_session(user_id)
         if "wishlist" not in session:
             session["wishlist"] = []
         if product_id not in [w["product_id"] for w in session["wishlist"]]:
             session["wishlist"].append({"product_id": product_id, "name": name})
+        # Store in DB
+        try:
+            from bot.services.database import add_to_wishlist
+            asyncio.create_task(add_to_wishlist(user_id, product_id, name))
+        except Exception:
+            pass
         await query.message.reply_text(f"💜 *{name}* added to your wishlist.\nI'll notify you when it's back in stock!", parse_mode="Markdown")
 
     elif data.startswith("proactive:submit"):
@@ -698,6 +704,15 @@ async def _handle_shop_pay(query, user_id: int):
     await asyncio.sleep(2)
 
     items_summary = ", ".join(f"{i['name']}" for i in cart)
+
+    # Save orders to DB
+    for item in cart:
+        try:
+            from bot.services.database import add_order
+            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), "PayPal")
+        except Exception:
+            pass
+
     clear_cart(user_id)
 
     await query.message.reply_text(

@@ -216,7 +216,7 @@ def view_product(product_id: str, user_id: int) -> tuple[str, InlineKeyboardMark
 
 
 def add_to_cart(product_id: str, user_id: int) -> str:
-    """Add product to user's in-memory cart (session)."""
+    """Add product to session cart + DB."""
     catalog = get_catalog()
     p = catalog.get_product(product_id)
     if not p:
@@ -229,6 +229,8 @@ def add_to_cart(product_id: str, user_id: int) -> str:
     for item in session["cart"]:
         if item["product_id"] == product_id:
             item["qty"] += 1
+            # Also update DB
+            _db_add_to_cart(user_id, p)
             return f"🛒 Updated! *{p['name']}* × {item['qty']} in cart."
 
     prefs = session.get("preferences", {})
@@ -248,9 +250,34 @@ def add_to_cart(product_id: str, user_id: int) -> str:
         "size": prefs.get("shoe_size") or prefs.get("shirt_size") or (p["sizes"][0] if p.get("sizes") else ""),
     })
 
+    # Write to DB
+    _db_add_to_cart(user_id, p)
+
     total = sum(i["price"] * i["qty"] for i in session["cart"])
     count = len(session["cart"])
     return f"🛒 *{p['name']}* added to cart!\n\nCart: {count} item(s) · Total: *${total}*"
+
+
+def _db_add_to_cart(user_id: int, product: dict):
+    """Fire-and-forget DB cart write."""
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(_async_db_add_cart(user_id, product))
+    except Exception:
+        pass
+
+
+async def _async_db_add_cart(user_id: int, product: dict):
+    try:
+        from bot.services.database import add_to_cart as db_add
+        await db_add(
+            user_id, product["id"], product["name"], product["price"],
+            product.get("icon", ""), product.get("store", ""), product.get("category", ""),
+        )
+    except Exception:
+        pass
 
 
 def get_cart_message(user_id: int) -> tuple[str, InlineKeyboardMarkup | None]:
@@ -288,9 +315,41 @@ def remove_from_cart(product_id: str, user_id: int) -> str:
     session = get_session(user_id)
     cart = session.get("cart", [])
     session["cart"] = [i for i in cart if i["product_id"] != product_id]
+    # DB remove
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(_async_db_remove_cart(user_id, product_id))
+    except Exception:
+        pass
     return "✅ Removed from cart."
+
+
+async def _async_db_remove_cart(user_id: int, product_id: str):
+    try:
+        from bot.services.database import remove_from_cart as db_remove
+        await db_remove(user_id, product_id)
+    except Exception:
+        pass
 
 
 def clear_cart(user_id: int):
     session = get_session(user_id)
     session["cart"] = []
+    # DB clear
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(_async_db_clear_cart(user_id))
+    except Exception:
+        pass
+
+
+async def _async_db_clear_cart(user_id: int):
+    try:
+        from bot.services.database import clear_cart as db_clear
+        await db_clear(user_id)
+    except Exception:
+        pass
