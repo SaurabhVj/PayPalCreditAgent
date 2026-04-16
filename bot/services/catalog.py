@@ -55,23 +55,70 @@ class DummyCatalog(ProductCatalog):
         logger.info(f"Loaded {len(self.products)} products from {len(self.stores)} stores")
 
     def search(self, query: str, filters: dict | None = None) -> list[dict]:
-        """Broad search — returns candidates. LLM reranks these."""
-        query_lower = query.lower()
-        query_words = query_lower.split()
+        """Smart broad search — uses word matching with category awareness."""
+        query_lower = query.lower().strip()
+        query_words = [w for w in query_lower.split() if len(w) > 1]
+
+        if not query_words:
+            return []
+
+        # Detect if query includes a category keyword
+        category_keywords = {
+            "shoes": "shoes", "shoe": "shoes", "sneakers": "shoes", "footwear": "shoes",
+            "clothing": "clothing", "clothes": "clothing", "shirt": "clothing", "tshirt": "clothing",
+            "t-shirt": "clothing", "jeans": "clothing", "pants": "clothing", "jacket": "clothing",
+            "shorts": "clothing",
+            "electronics": "electronics", "phone": "electronics", "laptop": "electronics",
+            "headphones": "electronics", "tablet": "electronics", "watch": "electronics",
+            "baby": "baby", "diapers": "baby", "stroller": "baby",
+            "groceries": "groceries", "grocery": "groceries", "food": "groceries",
+            "home": "home", "kitchen": "home", "vacuum": "home",
+            "accessories": "accessories", "sunglasses": "accessories",
+            "dining": "dining", "coffee": "dining",
+        }
+
+        required_category = None
+        brand_words = []
+        product_words = []
+
+        for word in query_words:
+            if word in category_keywords:
+                required_category = category_keywords[word]
+            else:
+                # Could be brand or product name
+                product_words.append(word)
+
         results = []
-
         for p in self.products.values():
-            searchable = f"{p['name']} {p.get('brand','')} {p.get('category','')} {' '.join(p.get('tags',[]))}".lower()
+            searchable = f"{p['name']} {p.get('brand','')} {' '.join(p.get('tags',[]))}".lower()
+            category = p.get("category", "").lower()
 
-            if any(word in searchable for word in query_words):
-                if filters:
-                    if "color" in filters and filters["color"]:
-                        if filters["color"].lower() not in [c.lower() for c in p.get("colors", [])]:
-                            continue
-                    if "color_exclude" in filters and filters["color_exclude"]:
-                        if any(c.lower() in [pc.lower() for pc in p.get("colors", [])] for c in filters["color_exclude"]):
-                            continue
-                results.append(p)
+            # If category is specified, enforce it
+            if required_category and category != required_category:
+                # Exception: some tags might match the category
+                tags = [t.lower() for t in p.get("tags", [])]
+                if required_category not in tags and required_category not in searchable:
+                    continue
+
+            # Match remaining words against product
+            if product_words:
+                if not any(word in searchable for word in product_words):
+                    continue
+            elif not required_category:
+                # No product words, no category — match any word
+                if not any(word in searchable for word in query_words):
+                    continue
+
+            # Apply filters
+            if filters:
+                if "color" in filters and filters["color"]:
+                    if filters["color"].lower() not in [c.lower() for c in p.get("colors", [])]:
+                        continue
+                if "color_exclude" in filters and filters["color_exclude"]:
+                    if any(c.lower() in [pc.lower() for pc in p.get("colors", [])] for c in filters["color_exclude"]):
+                        continue
+
+            results.append(p)
 
         return results[:15]
 

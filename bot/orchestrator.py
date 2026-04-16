@@ -40,10 +40,8 @@ class Orchestrator:
         elif intent == "shopping":
             result = await self.shopping_agent.handle(message, user_id, history, session)
 
-            # Step 3: Cross-agent credit enrichment
-            if result.products:
-                tip = await self._get_credit_tip(result.products, user_id)
-                result.credit_tip = tip
+            # Credit enrichment happens at checkout, not during browsing
+            # User hasn't decided to buy yet — don't suggest cards
 
             return result
 
