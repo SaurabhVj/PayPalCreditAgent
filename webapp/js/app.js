@@ -610,6 +610,16 @@ async function showShopCheckout() {
     total = cart.reduce((s, i) => s + i.price * i.qty, 0);
   }
 
+  // Fetch card recommendations
+  let cardRecs = {user_cards: [], suggestions: []};
+  const mainCategory = cart.length ? (cart[0].category || 'general') : 'general';
+  try {
+    const recResp = await fetch(`${API}/card-recommendations?total=${total}&category=${mainCategory}`);
+    cardRecs = await recResp.json();
+  } catch(e) {}
+
+  let selectedCard = cardRecs.user_cards?.[0]?.name || 'PayPal';
+
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:100;overflow-y:auto';
   overlay.innerHTML = `
@@ -625,7 +635,7 @@ async function showShopCheckout() {
           <span style="font-size:1.5rem">${i.icon || '📦'}</span>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;color:var(--text)">${i.name}</div>
-            <div style="font-size:11px;color:var(--dim)">${i.color || ''} · ${i.size || ''} · Qty: ${i.qty}</div>
+            <div style="font-size:11px;color:var(--dim)">Qty: ${i.qty}</div>
           </div>
           <div style="font-size:14px;font-weight:700;color:var(--text)">$${i.price * i.qty}</div>
         </div>
@@ -634,17 +644,59 @@ async function showShopCheckout() {
         <span>Total</span><span style="color:var(--blue)">$${total}</span>
       </div>
 
-      <div style="font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:16px 0 10px">Payment</div>
-      <div style="padding:14px;border:2px solid var(--blue);border-radius:10px;background:rgba(96,205,255,0.05);display:flex;align-items:center;gap:10px">
-        <span style="font-size:24px">🅿️</span>
-        <div><div style="font-size:14px;font-weight:600">PayPal</div><div style="font-size:11px;color:var(--dim)">Paying as ${name}</div></div>
-        <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--blue);background:rgba(96,205,255,0.15);padding:3px 8px;border-radius:20px">Connected</span>
-      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px">Select Payment Card</div>
+
+      ${(cardRecs.user_cards || []).map((c, i) => `
+        <div class="checkout-card-option ${i === 0 ? 'selected' : ''}" onclick="selectCheckoutCard(this, '${c.name}')" style="padding:14px;border:2px solid ${i === 0 ? 'var(--blue)' : 'var(--border)'};border-radius:12px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;background:${i === 0 ? 'rgba(96,205,255,0.05)' : 'transparent'}">
+          ${c.recommended ? '<div style="font-size:10px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">⭐ Recommended</div>' : ''}
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">${c.name}</div>
+              <div style="font-size:11px;color:var(--dim);margin-top:2px">${c.rewards_desc}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:16px;font-weight:800;color:#00a884">+$${c.reward_amount}</div>
+              <div style="font-size:10px;color:var(--dim)">cashback</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--dim)">
+            <span>Balance: $${c.balance.toLocaleString()} / $${c.limit.toLocaleString()}</span>
+            <span>${c.annual_fee} annual fee</span>
+          </div>
+        </div>
+      `).join('')}
+
+      ${(cardRecs.suggestions || []).length > 0 ? `
+        <div style="font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:16px 0 10px">💡 You Could Earn More With</div>
+        ${cardRecs.suggestions.map(s => `
+          <div style="padding:14px;border:1px dashed rgba(96,205,255,0.4);border-radius:12px;margin-bottom:8px;background:rgba(96,205,255,0.03)">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--text)">${s.name}</div>
+                <div style="font-size:11px;color:var(--blue);margin-top:2px">${s.benefit}</div>
+              </div>
+              <div style="font-size:10px;font-weight:700;color:var(--blue);background:rgba(96,205,255,0.15);padding:4px 10px;border-radius:20px;cursor:pointer">Apply</div>
+            </div>
+          </div>
+        `).join('')}
+      ` : ''}
 
       <button id="shopPayBtn" onclick="processShopPayment(${total})" style="width:100%;padding:14px;margin-top:16px;border:none;border-radius:10px;background:var(--blue);color:#000;font-size:15px;font-weight:800;cursor:pointer">Place Order — $${total}</button>
+      <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--dim)">Paying as ${name}</div>
     </div>
   `;
   document.getElementById('app').appendChild(overlay);
+}
+
+function selectCheckoutCard(el, cardName) {
+  document.querySelectorAll('.checkout-card-option').forEach(c => {
+    c.style.borderColor = 'var(--border)';
+    c.style.background = 'transparent';
+    c.classList.remove('selected');
+  });
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'rgba(96,205,255,0.05)';
+  el.classList.add('selected');
 }
 
 async function processShopPayment(total) {

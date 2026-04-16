@@ -154,6 +154,75 @@ async def get_cart_data(telegram_user_id: str = ""):
         return {"cart": [], "total": 0, "name": "", "email": ""}
 
 
+@router.get("/card-recommendations")
+async def card_recommendations(total: float = 0, category: str = "general"):
+    """Get credit card recommendations for checkout — LLM-powered."""
+    from bot.models.cards import PAYPAL_CARDS, DEFAULT_PORTFOLIO, RECOMMENDABLE_CARDS
+
+    # User's current cards with mock balances
+    user_cards = []
+    for c in DEFAULT_PORTFOLIO:
+        rewards_desc = ", ".join(f"{k}: {v}" for k, v in c.get("rewards", {}).items())
+        # Calculate estimated reward for this purchase
+        reward_amount = 0
+        if "3%" in rewards_desc:
+            reward_amount = round(total * 0.03, 2)
+        elif "2%" in rewards_desc:
+            reward_amount = round(total * 0.02, 2)
+        elif "1.5%" in rewards_desc:
+            reward_amount = round(total * 0.015, 2)
+
+        user_cards.append({
+            "id": c["id"],
+            "name": c["name"],
+            "type": c["type"],
+            "rewards_desc": rewards_desc,
+            "reward_amount": reward_amount,
+            "annual_fee": c.get("annual_fee", "$0"),
+            "balance": c.get("default_balance", 0),
+            "limit": c.get("default_limit", 0),
+            "owned": True,
+        })
+
+    # Sort by reward amount descending — best card first
+    user_cards.sort(key=lambda x: -x["reward_amount"])
+    if user_cards:
+        user_cards[0]["recommended"] = True
+
+    # Cards user doesn't have but could benefit from
+    suggestions = []
+    for c in RECOMMENDABLE_CARDS:
+        suggestion = {
+            "id": c["id"],
+            "name": c["name"],
+            "type": c["type"],
+            "annual_fee": c.get("annual_fee", "$0"),
+            "owned": False,
+        }
+        # Calculate potential benefit
+        rewards = c.get("rewards", {})
+        if "0% APR" in str(rewards) and total >= 149:
+            months = 6
+            monthly = round(total / months, 2)
+            suggestion["benefit"] = f"0% APR for {months} months — pay ${monthly}/month interest-free"
+            suggestion["highlight"] = True
+        elif "3%" in str(rewards):
+            suggestion["benefit"] = f"Up to 3% cashback (${round(total * 0.03, 2)}) — auto-detects top spending category"
+        elif "5%" in str(rewards):
+            suggestion["benefit"] = f"5% cashback on chosen category (${round(total * 0.05, 2)}/month)"
+        else:
+            suggestion["benefit"] = c.get("special", "")
+
+        if suggestion.get("benefit"):
+            suggestions.append(suggestion)
+
+    return {
+        "user_cards": user_cards,
+        "suggestions": suggestions[:2],  # Max 2 suggestions
+        "total": total,
+    }
+
+
 @router.post("/checkout-complete")
 async def checkout_complete(telegram_user_id: str = "", total: float = 0):
     """Called by Mini App after checkout."""
