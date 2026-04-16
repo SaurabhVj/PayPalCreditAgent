@@ -2,23 +2,440 @@
   "store_name": "HomeEssentials",
   "category": "Home, Grocery & Baby",
   "products": [
-    {"id": "sc-001", "name": "Dyson V15 Detect Vacuum", "brand": "Dyson", "price": 649, "category": "home", "icon": "🏠", "colors": ["Yellow/Nickel", "Blue/Nickel"], "sizes": ["One Size"], "in_stock": true, "tags": ["vacuum", "dyson", "cleaning", "cordless"]},
-    {"id": "sc-002", "name": "Dyson Airwrap Complete", "brand": "Dyson", "price": 599, "category": "home", "icon": "💇", "colors": ["Fuchsia/Nickel", "Blue/Copper"], "sizes": ["One Size"], "in_stock": true, "tags": ["airwrap", "hair", "dyson", "styling"]},
-    {"id": "sc-003", "name": "Pampers Premium Mega Pack", "brand": "Pampers", "price": 45, "category": "baby", "icon": "👶", "colors": ["N/A"], "sizes": ["Size 1", "Size 2", "Size 3", "Size 4", "Size 5"], "in_stock": true, "tags": ["diapers", "baby", "pampers", "nappies"]},
-    {"id": "sc-004", "name": "Pampers Baby Wipes", "brand": "Pampers", "price": 25, "category": "baby", "icon": "🧻", "colors": ["N/A"], "sizes": ["72ct", "144ct", "336ct"], "in_stock": true, "tags": ["wipes", "baby", "pampers", "sensitive"]},
-    {"id": "sc-005", "name": "FirstCry Baby Essentials Kit", "brand": "FirstCry", "price": 85, "category": "baby", "icon": "🍼", "colors": ["Blue", "Pink", "Yellow"], "sizes": ["Newborn", "3-6 months", "6-12 months"], "in_stock": true, "tags": ["baby", "essentials", "kit", "firstcry"]},
-    {"id": "sc-006", "name": "Mothercare Stroller Pro", "brand": "Mothercare", "price": 320, "category": "baby", "icon": "🚼", "colors": ["Black", "Grey", "Navy"], "sizes": ["One Size"], "in_stock": true, "tags": ["stroller", "pram", "baby", "mothercare"]},
-    {"id": "sc-007", "name": "Whole Foods Organic Grocery Box", "brand": "Whole Foods", "price": 65, "category": "groceries", "icon": "🥦", "colors": ["N/A"], "sizes": ["Small", "Medium", "Large"], "in_stock": true, "tags": ["organic", "grocery", "vegetables", "fruits", "whole foods"]},
-    {"id": "sc-008", "name": "Nespresso Vertuo Plus", "brand": "Nespresso", "price": 179, "category": "home", "icon": "☕", "colors": ["Matte Black", "Grey", "Cherry Red"], "sizes": ["One Size"], "in_stock": true, "tags": ["coffee", "machine", "nespresso", "espresso"]},
-    {"id": "sc-009", "name": "Nespresso Pods Variety Pack", "brand": "Nespresso", "price": 42, "category": "groceries", "icon": "☕", "colors": ["N/A"], "sizes": ["30 pods", "50 pods", "80 pods"], "in_stock": true, "tags": ["coffee", "pods", "nespresso", "capsules"]},
-    {"id": "sc-010", "name": "iRobot Roomba j7+", "brand": "iRobot", "price": 599, "category": "home", "icon": "🤖", "colors": ["Graphite"], "sizes": ["One Size"], "in_stock": false, "tags": ["roomba", "robot", "vacuum", "cleaning", "smart"]},
-    {"id": "sc-011", "name": "Instant Pot Duo 7-in-1", "brand": "Instant Pot", "price": 89, "category": "home", "icon": "🍲", "colors": ["Stainless Steel", "Black"], "sizes": ["3 Quart", "6 Quart", "8 Quart"], "in_stock": true, "tags": ["instant pot", "pressure cooker", "kitchen", "cooking"]},
-    {"id": "sc-012", "name": "VTech Baby Monitor WiFi HD", "brand": "VTech", "price": 120, "category": "baby", "icon": "📹", "colors": ["White"], "sizes": ["One Size"], "in_stock": true, "tags": ["baby monitor", "camera", "wifi", "baby"]},
-    {"id": "sc-013", "name": "Costco Bulk Pantry Pack", "brand": "Kirkland", "price": 145, "category": "groceries", "icon": "📦", "colors": ["N/A"], "sizes": ["30 items", "50 items"], "in_stock": true, "tags": ["bulk", "pantry", "grocery", "costco", "kirkland"]},
-    {"id": "sc-014", "name": "Philips Hue Starter Kit", "brand": "Philips", "price": 199, "category": "home", "icon": "💡", "colors": ["White", "Color"], "sizes": ["3 Bulbs", "4 Bulbs"], "in_stock": true, "tags": ["smart lights", "hue", "philips", "smart home"]},
-    {"id": "sc-015", "name": "Uber Eats Gift Card", "brand": "Uber Eats", "price": 50, "category": "dining", "icon": "🍔", "colors": ["N/A"], "sizes": ["$25", "$50", "$100"], "in_stock": true, "tags": ["gift card", "uber eats", "food", "delivery", "dining"]},
-    {"id": "sc-016", "name": "DoorDash Annual DashPass", "brand": "DoorDash", "price": 96, "category": "dining", "icon": "🍕", "colors": ["N/A"], "sizes": ["Annual"], "in_stock": true, "tags": ["dashpass", "doordash", "food", "delivery", "subscription", "dining"]},
-    {"id": "sc-017", "name": "Starbucks Premium Coffee Bundle", "brand": "Starbucks", "price": 55, "category": "dining", "icon": "☕", "colors": ["N/A"], "sizes": ["12 bags", "24 bags"], "in_stock": true, "tags": ["coffee", "starbucks", "beans", "ground"]},
-    {"id": "sc-018", "name": "KitchenAid Stand Mixer", "brand": "KitchenAid", "price": 349, "category": "home", "icon": "🍰", "colors": ["Empire Red", "Onyx Black", "White", "Blue Velvet"], "sizes": ["4.5 Quart", "5 Quart"], "in_stock": true, "tags": ["mixer", "baking", "kitchen", "kitchenaid"]}
+    {
+      "id": "sc-001",
+      "name": "Dyson V15 Detect Vacuum",
+      "brand": "Dyson",
+      "price": 649,
+      "category": "home",
+      "icon": "\ud83c\udfe0",
+      "colors": [
+        "Yellow/Nickel",
+        "Blue/Nickel"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "vacuum",
+        "dyson",
+        "cleaning",
+        "cordless"
+      ],
+      "image": "https://dyson-h.assetsadobe2.com/is/image/content/dam/dyson/images/products/primary/448798-01.png?fmt=png-alpha&wid=1000"
+    },
+    {
+      "id": "sc-002",
+      "name": "Dyson Airwrap Complete",
+      "brand": "Dyson",
+      "price": 599,
+      "category": "home",
+      "icon": "\ud83d\udc87",
+      "colors": [
+        "Fuchsia/Nickel",
+        "Blue/Copper"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "airwrap",
+        "hair",
+        "dyson",
+        "styling"
+      ],
+      "image": "https://dyson-h.assetsadobe2.com/is/image/content/dam/dyson/products/personal-care/airwrap/hs05/long/pdp/blue-blush-rose-gold/HS05-Airwrap-Long-BBR-Hero.png"
+    },
+    {
+      "id": "sc-003",
+      "name": "Pampers Premium Mega Pack",
+      "brand": "Pampers",
+      "price": 45,
+      "category": "baby",
+      "icon": "\ud83d\udc76",
+      "colors": [
+        "N/A"
+      ],
+      "sizes": [
+        "Size 1",
+        "Size 2",
+        "Size 3",
+        "Size 4",
+        "Size 5"
+      ],
+      "in_stock": true,
+      "tags": [
+        "diapers",
+        "baby",
+        "pampers",
+        "nappies"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71CjDT-fDvL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-004",
+      "name": "Pampers Baby Wipes",
+      "brand": "Pampers",
+      "price": 25,
+      "category": "baby",
+      "icon": "\ud83e\uddfb",
+      "colors": [
+        "N/A"
+      ],
+      "sizes": [
+        "72ct",
+        "144ct",
+        "336ct"
+      ],
+      "in_stock": true,
+      "tags": [
+        "wipes",
+        "baby",
+        "pampers",
+        "sensitive"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71jMK5ykNGL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-005",
+      "name": "FirstCry Baby Essentials Kit",
+      "brand": "FirstCry",
+      "price": 85,
+      "category": "baby",
+      "icon": "\ud83c\udf7c",
+      "colors": [
+        "Blue",
+        "Pink",
+        "Yellow"
+      ],
+      "sizes": [
+        "Newborn",
+        "3-6 months",
+        "6-12 months"
+      ],
+      "in_stock": true,
+      "tags": [
+        "baby",
+        "essentials",
+        "kit",
+        "firstcry"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71VjQyX+ySL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-006",
+      "name": "Mothercare Stroller Pro",
+      "brand": "Mothercare",
+      "price": 320,
+      "category": "baby",
+      "icon": "\ud83d\udebc",
+      "colors": [
+        "Black",
+        "Grey",
+        "Navy"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "stroller",
+        "pram",
+        "baby",
+        "mothercare"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71S8oj7FWUL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-007",
+      "name": "Whole Foods Organic Grocery Box",
+      "brand": "Whole Foods",
+      "price": 65,
+      "category": "groceries",
+      "icon": "\ud83e\udd66",
+      "colors": [
+        "N/A"
+      ],
+      "sizes": [
+        "Small",
+        "Medium",
+        "Large"
+      ],
+      "in_stock": true,
+      "tags": [
+        "organic",
+        "grocery",
+        "vegetables",
+        "fruits",
+        "whole foods"
+      ],
+      "image": "https://m.media-amazon.com/images/I/81YhMBL+zhL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-008",
+      "name": "Nespresso Vertuo Plus",
+      "brand": "Nespresso",
+      "price": 179,
+      "category": "home",
+      "icon": "\u2615",
+      "colors": [
+        "Matte Black",
+        "Grey",
+        "Cherry Red"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "coffee",
+        "machine",
+        "nespresso",
+        "espresso"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71d2AlZsW6L._AC_SL1500_.jpg"
+    },
+    {
+      "id": "sc-009",
+      "name": "Nespresso Pods Variety Pack",
+      "brand": "Nespresso",
+      "price": 42,
+      "category": "groceries",
+      "icon": "\u2615",
+      "colors": [
+        "N/A"
+      ],
+      "sizes": [
+        "30 pods",
+        "50 pods",
+        "80 pods"
+      ],
+      "in_stock": true,
+      "tags": [
+        "coffee",
+        "pods",
+        "nespresso",
+        "capsules"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71r2plWYVEL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-010",
+      "name": "iRobot Roomba j7+",
+      "brand": "iRobot",
+      "price": 599,
+      "category": "home",
+      "icon": "\ud83e\udd16",
+      "colors": [
+        "Graphite"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": false,
+      "tags": [
+        "roomba",
+        "robot",
+        "vacuum",
+        "cleaning",
+        "smart"
+      ],
+      "image": "https://m.media-amazon.com/images/I/61lbUCqzPlL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-011",
+      "name": "Instant Pot Duo 7-in-1",
+      "brand": "Instant Pot",
+      "price": 89,
+      "category": "home",
+      "icon": "\ud83c\udf72",
+      "colors": [
+        "Stainless Steel",
+        "Black"
+      ],
+      "sizes": [
+        "3 Quart",
+        "6 Quart",
+        "8 Quart"
+      ],
+      "in_stock": true,
+      "tags": [
+        "instant pot",
+        "pressure cooker",
+        "kitchen",
+        "cooking"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71V1LnDLMFL._AC_SL1500_.jpg"
+    },
+    {
+      "id": "sc-012",
+      "name": "VTech Baby Monitor WiFi HD",
+      "brand": "VTech",
+      "price": 120,
+      "category": "baby",
+      "icon": "\ud83d\udcf9",
+      "colors": [
+        "White"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "baby monitor",
+        "camera",
+        "wifi",
+        "baby"
+      ],
+      "image": "https://m.media-amazon.com/images/I/51BnOKXMjDL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-013",
+      "name": "Costco Bulk Pantry Pack",
+      "brand": "Kirkland",
+      "price": 145,
+      "category": "groceries",
+      "icon": "\ud83d\udce6",
+      "colors": [
+        "N/A"
+      ],
+      "sizes": [
+        "30 items",
+        "50 items"
+      ],
+      "in_stock": true,
+      "tags": [
+        "bulk",
+        "pantry",
+        "grocery",
+        "costco",
+        "kirkland"
+      ],
+      "image": "https://m.media-amazon.com/images/I/81k1abHKe6L._SL1500_.jpg"
+    },
+    {
+      "id": "sc-014",
+      "name": "Philips Hue Starter Kit",
+      "brand": "Philips",
+      "price": 199,
+      "category": "home",
+      "icon": "\ud83d\udca1",
+      "colors": [
+        "White",
+        "Color"
+      ],
+      "sizes": [
+        "3 Bulbs",
+        "4 Bulbs"
+      ],
+      "in_stock": true,
+      "tags": [
+        "smart lights",
+        "hue",
+        "philips",
+        "smart home"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71SrBHhGHGL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-015",
+      "name": "Uber Eats Gift Card",
+      "brand": "Uber Eats",
+      "price": 50,
+      "category": "dining",
+      "icon": "\ud83c\udf54",
+      "colors": [
+        "N/A"
+      ],
+      "sizes": [
+        "$25",
+        "$50",
+        "$100"
+      ],
+      "in_stock": true,
+      "tags": [
+        "gift card",
+        "uber eats",
+        "food",
+        "delivery",
+        "dining"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71Zu2fPpn3L._SL1500_.jpg"
+    },
+    {
+      "id": "sc-016",
+      "name": "DoorDash Annual DashPass",
+      "brand": "DoorDash",
+      "price": 96,
+      "category": "dining",
+      "icon": "\ud83c\udf55",
+      "colors": [
+        "N/A"
+      ],
+      "sizes": [
+        "Annual"
+      ],
+      "in_stock": true,
+      "tags": [
+        "dashpass",
+        "doordash",
+        "food",
+        "delivery",
+        "subscription",
+        "dining"
+      ],
+      "image": "https://m.media-amazon.com/images/I/61OIjzQqBVL._SL1500_.jpg"
+    },
+    {
+      "id": "sc-017",
+      "name": "Starbucks Premium Coffee Bundle",
+      "brand": "Starbucks",
+      "price": 55,
+      "category": "dining",
+      "icon": "\u2615",
+      "colors": [
+        "N/A"
+      ],
+      "sizes": [
+        "12 bags",
+        "24 bags"
+      ],
+      "in_stock": true,
+      "tags": [
+        "coffee",
+        "starbucks",
+        "beans",
+        "ground"
+      ],
+      "image": "https://m.media-amazon.com/images/I/81ZrTsnAl5L._SL1500_.jpg"
+    },
+    {
+      "id": "sc-018",
+      "name": "KitchenAid Stand Mixer",
+      "brand": "KitchenAid",
+      "price": 349,
+      "category": "home",
+      "icon": "\ud83c\udf70",
+      "colors": [
+        "Empire Red",
+        "Onyx Black",
+        "White",
+        "Blue Velvet"
+      ],
+      "sizes": [
+        "4.5 Quart",
+        "5 Quart"
+      ],
+      "in_stock": true,
+      "tags": [
+        "mixer",
+        "baking",
+        "kitchen",
+        "kitchenaid"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71SPYhIyiqL._AC_SL1500_.jpg"
+    }
   ]
 }

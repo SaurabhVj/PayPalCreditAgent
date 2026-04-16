@@ -2,20 +2,377 @@
   "store_name": "TechWorld",
   "category": "Electronics & Gadgets",
   "products": [
-    {"id": "sb-001", "name": "iPhone 16 Pro", "brand": "Apple", "price": 1199, "category": "electronics", "icon": "📱", "colors": ["Natural Titanium", "Black Titanium", "White Titanium", "Desert Titanium"], "sizes": ["256GB", "512GB", "1TB"], "in_stock": true, "tags": ["iphone", "smartphone", "apple", "phone"]},
-    {"id": "sb-002", "name": "MacBook Air M3 15-inch", "brand": "Apple", "price": 1299, "category": "electronics", "icon": "💻", "colors": ["Midnight", "Starlight", "Space Gray", "Silver"], "sizes": ["256GB", "512GB", "1TB"], "in_stock": true, "tags": ["macbook", "laptop", "apple", "computer"]},
-    {"id": "sb-003", "name": "iPad Air M2", "brand": "Apple", "price": 599, "category": "electronics", "icon": "📲", "colors": ["Space Gray", "Blue", "Purple", "Starlight"], "sizes": ["128GB", "256GB", "512GB", "1TB"], "in_stock": true, "tags": ["ipad", "tablet", "apple"]},
-    {"id": "sb-004", "name": "Sony WH-1000XM5 Headphones", "brand": "Sony", "price": 348, "category": "electronics", "icon": "🎧", "colors": ["Black", "Silver", "Midnight Blue"], "sizes": ["One Size"], "in_stock": true, "tags": ["headphones", "noise cancelling", "wireless", "sony"]},
-    {"id": "sb-005", "name": "Samsung Galaxy S24 Ultra", "brand": "Samsung", "price": 1299, "category": "electronics", "icon": "📱", "colors": ["Titanium Black", "Titanium Gray", "Titanium Violet", "Titanium Yellow"], "sizes": ["256GB", "512GB", "1TB"], "in_stock": true, "tags": ["samsung", "galaxy", "smartphone", "phone"]},
-    {"id": "sb-006", "name": "Samsung Galaxy Watch 6", "brand": "Samsung", "price": 249, "category": "electronics", "icon": "⌚", "colors": ["Graphite", "Silver", "Gold"], "sizes": ["40mm", "44mm"], "in_stock": true, "tags": ["smartwatch", "samsung", "fitness"]},
-    {"id": "sb-007", "name": "Apple AirPods Pro 2", "brand": "Apple", "price": 249, "category": "electronics", "icon": "🎵", "colors": ["White"], "sizes": ["One Size"], "in_stock": true, "tags": ["airpods", "earbuds", "wireless", "apple"]},
-    {"id": "sb-008", "name": "Sony PlayStation 5 Slim", "brand": "Sony", "price": 449, "category": "electronics", "icon": "🎮", "colors": ["White", "Black"], "sizes": ["Disc Edition", "Digital Edition"], "in_stock": false, "tags": ["playstation", "ps5", "gaming", "console"]},
-    {"id": "sb-009", "name": "Nintendo Switch OLED", "brand": "Nintendo", "price": 349, "category": "electronics", "icon": "🎮", "colors": ["White", "Neon Blue/Red"], "sizes": ["64GB"], "in_stock": true, "tags": ["nintendo", "switch", "gaming", "portable"]},
-    {"id": "sb-010", "name": "Kindle Paperwhite", "brand": "Amazon", "price": 139, "category": "electronics", "icon": "📚", "colors": ["Black", "Denim", "Agave Green"], "sizes": ["16GB", "32GB"], "in_stock": true, "tags": ["kindle", "ebook", "reader", "amazon"]},
-    {"id": "sb-011", "name": "Bose QuietComfort Ultra", "brand": "Bose", "price": 429, "category": "electronics", "icon": "🎧", "colors": ["Black", "White Smoke", "Lunar Blue"], "sizes": ["One Size"], "in_stock": true, "tags": ["headphones", "noise cancelling", "bose", "premium"]},
-    {"id": "sb-012", "name": "GoPro Hero 12 Black", "brand": "GoPro", "price": 349, "category": "electronics", "icon": "📷", "colors": ["Black"], "sizes": ["One Size"], "in_stock": true, "tags": ["gopro", "action camera", "camera", "sports"]},
-    {"id": "sb-013", "name": "Apple Watch Series 9", "brand": "Apple", "price": 399, "category": "electronics", "icon": "⌚", "colors": ["Midnight", "Starlight", "Silver", "Pink", "Red"], "sizes": ["41mm", "45mm"], "in_stock": true, "tags": ["apple watch", "smartwatch", "fitness", "apple"]},
-    {"id": "sb-014", "name": "Samsung Galaxy Tab S9", "brand": "Samsung", "price": 799, "category": "electronics", "icon": "📲", "colors": ["Graphite", "Beige"], "sizes": ["128GB", "256GB"], "in_stock": false, "tags": ["tablet", "samsung", "galaxy tab"]},
-    {"id": "sb-015", "name": "JBL Charge 5 Speaker", "brand": "JBL", "price": 179, "category": "electronics", "icon": "🔊", "colors": ["Black", "Blue", "Red", "Green", "Grey"], "sizes": ["One Size"], "in_stock": true, "tags": ["speaker", "bluetooth", "portable", "jbl"]}
+    {
+      "id": "sb-001",
+      "name": "iPhone 16 Pro",
+      "brand": "Apple",
+      "price": 1199,
+      "category": "electronics",
+      "icon": "\ud83d\udcf1",
+      "colors": [
+        "Natural Titanium",
+        "Black Titanium",
+        "White Titanium",
+        "Desert Titanium"
+      ],
+      "sizes": [
+        "256GB",
+        "512GB",
+        "1TB"
+      ],
+      "in_stock": true,
+      "tags": [
+        "iphone",
+        "smartphone",
+        "apple",
+        "phone"
+      ],
+      "image": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-16-pro-finish-select-202409-6-3inch-naturaltitanium?wid=940&hei=1112&fmt=p-jpg"
+    },
+    {
+      "id": "sb-002",
+      "name": "MacBook Air M3 15-inch",
+      "brand": "Apple",
+      "price": 1299,
+      "category": "electronics",
+      "icon": "\ud83d\udcbb",
+      "colors": [
+        "Midnight",
+        "Starlight",
+        "Space Gray",
+        "Silver"
+      ],
+      "sizes": [
+        "256GB",
+        "512GB",
+        "1TB"
+      ],
+      "in_stock": true,
+      "tags": [
+        "macbook",
+        "laptop",
+        "apple",
+        "computer"
+      ],
+      "image": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/macbook-air-midnight-select-20220606?wid=904&hei=840&fmt=jpeg"
+    },
+    {
+      "id": "sb-003",
+      "name": "iPad Air M2",
+      "brand": "Apple",
+      "price": 599,
+      "category": "electronics",
+      "icon": "\ud83d\udcf2",
+      "colors": [
+        "Space Gray",
+        "Blue",
+        "Purple",
+        "Starlight"
+      ],
+      "sizes": [
+        "128GB",
+        "256GB",
+        "512GB",
+        "1TB"
+      ],
+      "in_stock": true,
+      "tags": [
+        "ipad",
+        "tablet",
+        "apple"
+      ],
+      "image": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/ipad-air-select-wifi-blue-202203?wid=940&hei=1112&fmt=p-jpg"
+    },
+    {
+      "id": "sb-004",
+      "name": "Sony WH-1000XM5 Headphones",
+      "brand": "Sony",
+      "price": 348,
+      "category": "electronics",
+      "icon": "\ud83c\udfa7",
+      "colors": [
+        "Black",
+        "Silver",
+        "Midnight Blue"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "headphones",
+        "noise cancelling",
+        "wireless",
+        "sony"
+      ],
+      "image": "https://m.media-amazon.com/images/I/51aXvjzcukL._AC_SL1500_.jpg"
+    },
+    {
+      "id": "sb-005",
+      "name": "Samsung Galaxy S24 Ultra",
+      "brand": "Samsung",
+      "price": 1299,
+      "category": "electronics",
+      "icon": "\ud83d\udcf1",
+      "colors": [
+        "Titanium Black",
+        "Titanium Gray",
+        "Titanium Violet",
+        "Titanium Yellow"
+      ],
+      "sizes": [
+        "256GB",
+        "512GB",
+        "1TB"
+      ],
+      "in_stock": true,
+      "tags": [
+        "samsung",
+        "galaxy",
+        "smartphone",
+        "phone"
+      ],
+      "image": "https://images.samsung.com/is/image/samsung/p6pim/levant/2401/gallery/levant-galaxy-s24-ultra-s928-sm-s928bztdmea-539573194"
+    },
+    {
+      "id": "sb-006",
+      "name": "Samsung Galaxy Watch 6",
+      "brand": "Samsung",
+      "price": 249,
+      "category": "electronics",
+      "icon": "\u231a",
+      "colors": [
+        "Graphite",
+        "Silver",
+        "Gold"
+      ],
+      "sizes": [
+        "40mm",
+        "44mm"
+      ],
+      "in_stock": true,
+      "tags": [
+        "smartwatch",
+        "samsung",
+        "fitness"
+      ],
+      "image": "https://images.samsung.com/is/image/samsung/p6pim/uk/2308/gallery/uk-galaxy-watch6-r930-sm-r930nzkabtu-537192289"
+    },
+    {
+      "id": "sb-007",
+      "name": "Apple AirPods Pro 2",
+      "brand": "Apple",
+      "price": 249,
+      "category": "electronics",
+      "icon": "\ud83c\udfb5",
+      "colors": [
+        "White"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "airpods",
+        "earbuds",
+        "wireless",
+        "apple"
+      ],
+      "image": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/MQD83?wid=1144&hei=1144&fmt=jpeg"
+    },
+    {
+      "id": "sb-008",
+      "name": "Sony PlayStation 5 Slim",
+      "brand": "Sony",
+      "price": 449,
+      "category": "electronics",
+      "icon": "\ud83c\udfae",
+      "colors": [
+        "White",
+        "Black"
+      ],
+      "sizes": [
+        "Disc Edition",
+        "Digital Edition"
+      ],
+      "in_stock": false,
+      "tags": [
+        "playstation",
+        "ps5",
+        "gaming",
+        "console"
+      ],
+      "image": "https://m.media-amazon.com/images/I/41g1L0VJXqL._SL500_.jpg"
+    },
+    {
+      "id": "sb-009",
+      "name": "Nintendo Switch OLED",
+      "brand": "Nintendo",
+      "price": 349,
+      "category": "electronics",
+      "icon": "\ud83c\udfae",
+      "colors": [
+        "White",
+        "Neon Blue/Red"
+      ],
+      "sizes": [
+        "64GB"
+      ],
+      "in_stock": true,
+      "tags": [
+        "nintendo",
+        "switch",
+        "gaming",
+        "portable"
+      ],
+      "image": "https://assets.nintendo.com/image/upload/f_auto/q_auto/dpr_1.5/c_fill,w_540/ncom/en_US/switch/site-design-update/oled-background"
+    },
+    {
+      "id": "sb-010",
+      "name": "Kindle Paperwhite",
+      "brand": "Amazon",
+      "price": 139,
+      "category": "electronics",
+      "icon": "\ud83d\udcda",
+      "colors": [
+        "Black",
+        "Denim",
+        "Agave Green"
+      ],
+      "sizes": [
+        "16GB",
+        "32GB"
+      ],
+      "in_stock": true,
+      "tags": [
+        "kindle",
+        "ebook",
+        "reader",
+        "amazon"
+      ],
+      "image": "https://m.media-amazon.com/images/I/61yVnWpHURL._AC_SL1000_.jpg"
+    },
+    {
+      "id": "sb-011",
+      "name": "Bose QuietComfort Ultra",
+      "brand": "Bose",
+      "price": 429,
+      "category": "electronics",
+      "icon": "\ud83c\udfa7",
+      "colors": [
+        "Black",
+        "White Smoke",
+        "Lunar Blue"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "headphones",
+        "noise cancelling",
+        "bose",
+        "premium"
+      ],
+      "image": "https://assets.bose.com/content/dam/cloudassets/Bose_DAM/Web/consumer_electronics/global/products/headphones/qc_ultra_headphones/product_silo_images/QUHE_PDP_Ecom-Gallery-B02.png"
+    },
+    {
+      "id": "sb-012",
+      "name": "GoPro Hero 12 Black",
+      "brand": "GoPro",
+      "price": 349,
+      "category": "electronics",
+      "icon": "\ud83d\udcf7",
+      "colors": [
+        "Black"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "gopro",
+        "action camera",
+        "camera",
+        "sports"
+      ],
+      "image": "https://m.media-amazon.com/images/I/61p2fJHkBEL._AC_SL1500_.jpg"
+    },
+    {
+      "id": "sb-013",
+      "name": "Apple Watch Series 9",
+      "brand": "Apple",
+      "price": 399,
+      "category": "electronics",
+      "icon": "\u231a",
+      "colors": [
+        "Midnight",
+        "Starlight",
+        "Silver",
+        "Pink",
+        "Red"
+      ],
+      "sizes": [
+        "41mm",
+        "45mm"
+      ],
+      "in_stock": true,
+      "tags": [
+        "apple watch",
+        "smartwatch",
+        "fitness",
+        "apple"
+      ],
+      "image": "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/watch-s9-702702?wid=1024&hei=1024&fmt=jpeg"
+    },
+    {
+      "id": "sb-014",
+      "name": "Samsung Galaxy Tab S9",
+      "brand": "Samsung",
+      "price": 799,
+      "category": "electronics",
+      "icon": "\ud83d\udcf2",
+      "colors": [
+        "Graphite",
+        "Beige"
+      ],
+      "sizes": [
+        "128GB",
+        "256GB"
+      ],
+      "in_stock": false,
+      "tags": [
+        "tablet",
+        "samsung",
+        "galaxy tab"
+      ],
+      "image": "https://images.samsung.com/is/image/samsung/p6pim/uk/sm-x710nzaaeub/gallery/uk-galaxy-tab-s9-x710-sm-x710nzaaeub-537059530"
+    },
+    {
+      "id": "sb-015",
+      "name": "JBL Charge 5 Speaker",
+      "brand": "JBL",
+      "price": 179,
+      "category": "electronics",
+      "icon": "\ud83d\udd0a",
+      "colors": [
+        "Black",
+        "Blue",
+        "Red",
+        "Green",
+        "Grey"
+      ],
+      "sizes": [
+        "One Size"
+      ],
+      "in_stock": true,
+      "tags": [
+        "speaker",
+        "bluetooth",
+        "portable",
+        "jbl"
+      ],
+      "image": "https://m.media-amazon.com/images/I/71JB6hM6Z6L._AC_SL1500_.jpg"
+    }
   ]
 }

@@ -8,8 +8,8 @@ from bot.services.session import get_session
 logger = logging.getLogger(__name__)
 
 
-def search_products(query: str, user_id: int) -> tuple[str, InlineKeyboardMarkup | None]:
-    """Search products and return formatted message + keyboard."""
+def search_products(query: str, user_id: int) -> list[dict]:
+    """Search products and return list of product cards to send as photos."""
     catalog = get_catalog()
     session = get_session(user_id)
 
@@ -17,7 +17,7 @@ def search_products(query: str, user_id: int) -> tuple[str, InlineKeyboardMarkup
     prefs = session.get("preferences", {})
     filters = {}
     if prefs.get("color_prefer"):
-        filters["color"] = prefs["color_prefer"][0]  # Use primary preferred color
+        filters["color"] = prefs["color_prefer"][0]
     if prefs.get("color_exclude"):
         filters["color_exclude"] = prefs["color_exclude"]
     if prefs.get("brand_prefer"):
@@ -28,36 +28,45 @@ def search_products(query: str, user_id: int) -> tuple[str, InlineKeyboardMarkup
     results = catalog.search(query, filters if filters else None)
 
     if not results:
-        # Try without filters
         results = catalog.search(query)
-        if not results:
-            return "🔍 No products found. Try a different search term.", None
 
-    lines = [f"🔍 *Found {len(results)} result(s)*\n"]
-    buttons = []
+    if not results:
+        return []
 
-    for i, p in enumerate(results[:6]):  # Max 6 results
+    cards = []
+    for p in results[:4]:  # Max 4 photo cards
         stock = "✅ In Stock" if p["in_stock"] else "❌ Out of Stock"
         colors = ", ".join(p.get("colors", [])[:3])
-        lines.append(
-            f"{p['icon']} *{p['name']}*\n"
-            f"   💰 *${p['price']}* · 🏪 {p['store']}\n"
-            f"   {stock} · 🎨 {colors}\n"
+
+        caption = (
+            f"*{p['name']}*\n"
+            f"💰 *${p['price']}* · 🏪 {p['store']}\n"
+            f"{stock} · 🎨 {colors}"
         )
 
         if p["in_stock"]:
-            buttons.append([InlineKeyboardButton(
-                f"🛒 {p['name'][:30]} — ${p['price']}",
-                callback_data=f"shop:view:{p['id']}"
-            )])
+            kb = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("🛒 Add to Cart", callback_data=f"shop:add:{p['id']}"),
+                    InlineKeyboardButton("📋 Details", callback_data=f"shop:view:{p['id']}"),
+                ],
+            ])
         else:
-            buttons.append([InlineKeyboardButton(
-                f"💜 Wishlist: {p['name'][:25]}",
-                callback_data=f"shop:wishlist:{p['id']}"
-            )])
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("💜 Add to Wishlist", callback_data=f"shop:wishlist:{p['id']}")],
+            ])
 
-    kb = InlineKeyboardMarkup(buttons) if buttons else None
-    return "\n".join(lines), kb
+        cards.append({
+            "image": p.get("image", ""),
+            "caption": caption,
+            "keyboard": kb,
+            "icon": p["icon"],
+            "name": p["name"],
+            "price": p["price"],
+            "product_id": p["id"],
+        })
+
+    return cards
 
 
 def view_product(product_id: str, user_id: int) -> tuple[str, InlineKeyboardMarkup | None]:

@@ -178,9 +178,33 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 asyncio.create_task(_poll_login_from_message(update, user_id))
         elif action == "shop":
             from bot.agents.shopping_agent import search_products
-            search_query = extra or text  # Use extracted query or original message
-            msg, kb = search_products(search_query, user_id)
-            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
+            search_query = extra or text
+            cards = search_products(search_query, user_id)
+            if not cards:
+                await update.message.reply_text("🔍 No products found. Try a different search term.")
+            else:
+                await update.message.reply_text(f"🔍 Found {len(cards)} result(s):")
+                for card in cards:
+                    try:
+                        if card.get("image"):
+                            await update.message.reply_photo(
+                                photo=card["image"],
+                                caption=card["caption"],
+                                parse_mode="Markdown",
+                                reply_markup=card["keyboard"],
+                            )
+                        else:
+                            await update.message.reply_text(
+                                f"{card['icon']} {card['caption']}",
+                                parse_mode="Markdown",
+                                reply_markup=card["keyboard"],
+                            )
+                    except Exception:
+                        await update.message.reply_text(
+                            f"{card['icon']} {card['caption']}",
+                            parse_mode="Markdown",
+                            reply_markup=card["keyboard"],
+                        )
         elif action == "cart":
             from bot.agents.shopping_agent import get_cart_message
             msg, kb = get_cart_message(user_id)
