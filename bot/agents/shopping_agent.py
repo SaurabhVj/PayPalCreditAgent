@@ -71,8 +71,14 @@ class ShoppingAgent:
 
         if tool_call and tool_call["name"] == "search_products":
             query = tool_call["args"].get("query", message)
-            # Pass original message for negation handling ("not iphone")
+            # Search with original query first
             products = await self._search_and_rerank(query, user_id, original_message=message)
+
+            # If no results, ask LLM to expand with synonyms and retry
+            if not products:
+                expanded = await self._expand_query(query)
+                if expanded and expanded != query:
+                    products = await self._search_and_rerank(expanded, user_id, original_message=message)
 
             if products:
                 if llm_message:
@@ -93,6 +99,33 @@ class ShoppingAgent:
             response.message = llm_message or "What are you looking for? I can help you find products."
 
         return response
+
+    async def _expand_query(self, query: str) -> str:
+        """Ask LLM to expand query with synonyms when no results found."""
+        try:
+            import httpx
+            from bot.config import GROQ_API_KEY
+            async with httpx.AsyncClient(timeout=8) as client:
+                resp = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                    json={
+                        "model": "llama-3.1-8b-instant",
+                        "messages": [
+                            {"role": "system", "content": "You expand search queries with synonyms. Given a product search query, return an expanded version with synonyms separated by spaces. Only return the expanded query, nothing else. Example: 'earphones' → 'earphones earbuds headphones audio'. Keep it short — max 6 words."},
+                            {"role": "user", "content": query},
+                        ],
+                        "temperature": 0,
+                        "max_tokens": 30,
+                    },
+                )
+                if resp.status_code == 200:
+                    expanded = resp.json()["choices"][0]["message"]["content"].strip()
+                    logger.info(f"Query expanded: '{query}' → '{expanded}'")
+                    return expanded
+        except Exception as e:
+            logger.debug(f"Query expansion failed: {e}")
+        return query
 
     async def _search_and_rerank(self, query: str, user_id: int, original_message: str = "") -> list[dict]:
         """Broad search + LLM reranking → product cards."""
