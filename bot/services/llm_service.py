@@ -191,47 +191,54 @@ async def credit_enrichment(products: list[dict], user_portfolio: list[dict]) ->
 # ── Internal helpers ──
 
 async def _call_groq(system_prompt: str, tools: list[dict], messages: list[dict]) -> dict | None:
-    """Call Groq with function calling."""
+    """Call Groq with function calling. Uses 8b (500K tokens/day) with 70b fallback."""
     all_messages = [{"role": "system", "content": system_prompt}] + messages
 
-    body = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": all_messages,
-        "temperature": 0.7,
-        "max_tokens": 500,
-    }
-    if tools:
-        body["tools"] = tools
-        body["tool_choice"] = "auto"
+    for model in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"]:
+        body = {
+            "model": model,
+            "messages": all_messages,
+            "temperature": 0.7,
+            "max_tokens": 300,
+        }
+        if tools:
+            body["tools"] = tools
+            body["tool_choice"] = "auto"
 
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json=body,
-            )
-            if resp.status_code == 200:
-                msg = resp.json()["choices"][0]["message"]
-                text = msg.get("content") or ""
-                tool_call = None
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                    json=body,
+                )
+                if resp.status_code == 200:
+                    msg = resp.json()["choices"][0]["message"]
+                    text = msg.get("content") or ""
+                    tool_call = None
 
-                if msg.get("tool_calls"):
-                    tc = msg["tool_calls"][0]
-                    raw_args = tc["function"].get("arguments", "{}")
-                    try:
-                        func_args = json.loads(raw_args) if raw_args and raw_args != "null" else {}
-                    except (json.JSONDecodeError, TypeError):
-                        func_args = {}
-                    if not isinstance(func_args, dict):
-                        func_args = {}
-                    tool_call = {"name": tc["function"]["name"], "args": func_args}
+                    if msg.get("tool_calls"):
+                        tc = msg["tool_calls"][0]
+                        raw_args = tc["function"].get("arguments", "{}")
+                        try:
+                            func_args = json.loads(raw_args) if raw_args and raw_args != "null" else {}
+                        except (json.JSONDecodeError, TypeError):
+                            func_args = {}
+                        if not isinstance(func_args, dict):
+                            func_args = {}
+                        tool_call = {"name": tc["function"]["name"], "args": func_args}
 
-                return {"message": text.strip() if text else None, "tool_call": tool_call}
-            else:
-                logger.warning(f"Groq returned {resp.status_code}: {resp.text[:200]}")
-    except Exception as e:
-        logger.error(f"Groq error: {e}")
+                    logger.info(f"Groq ({model}) agent call OK")
+                    return {"message": text.strip() if text else None, "tool_call": tool_call}
+                elif resp.status_code == 429:
+                    logger.warning(f"Groq ({model}) rate limited, trying next")
+                    continue
+                else:
+                    logger.warning(f"Groq ({model}) {resp.status_code}: {resp.text[:100]}")
+                    continue
+        except Exception as e:
+            logger.error(f"Groq ({model}) error: {e}")
+            continue
 
     return None
 
