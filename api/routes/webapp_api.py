@@ -189,36 +189,8 @@ async def card_recommendations(total: float = 0, category: str = "general"):
     if user_cards:
         user_cards[0]["recommended"] = True
 
-    # Cards user doesn't have but could benefit from
-    suggestions = []
-    for c in RECOMMENDABLE_CARDS:
-        suggestion = {
-            "id": c["id"],
-            "name": c["name"],
-            "type": c["type"],
-            "annual_fee": c.get("annual_fee", "$0"),
-            "owned": False,
-        }
-        # Calculate potential benefit
-        rewards = c.get("rewards", {})
-        if "0% APR" in str(rewards) and total >= 149:
-            months = 6
-            monthly = round(total / months, 2)
-            suggestion["benefit"] = f"0% APR for {months} months — pay ${monthly}/month interest-free"
-            suggestion["highlight"] = True
-        elif "3%" in str(rewards):
-            suggestion["benefit"] = f"Up to 3% cashback (${round(total * 0.03, 2)}) — auto-detects top spending category"
-        elif "5%" in str(rewards):
-            suggestion["benefit"] = f"5% cashback on chosen category (${round(total * 0.05, 2)}/month)"
-        else:
-            suggestion["benefit"] = c.get("special", "")
-
-        if suggestion.get("benefit"):
-            suggestions.append(suggestion)
-
     return {
         "user_cards": user_cards,
-        "suggestions": suggestions[:2],  # Max 2 suggestions
         "total": total,
     }
 

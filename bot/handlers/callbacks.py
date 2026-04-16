@@ -754,24 +754,53 @@ async def _handle_shop_pay(query, user_id: int):
         ]),
     )
 
-    # Post-purchase credit analysis — could you have saved more?
+    # Post-purchase proactive — recommend better cards
     try:
-        from bot.services.llm_service import credit_enrichment
-        from bot.models.cards import RECOMMENDABLE_CARDS
-        # Show what other cards could have earned
-        other_cards = [{"card_id": c["id"], "balance": 0, "credit_limit": 10000} for c in RECOMMENDABLE_CARDS]
-        post_tip = await credit_enrichment(
-            [{"name": i["name"], "price": i["price"], "category": i.get("category", "")} for i in cart_before_clear],
-            other_cards,
-        )
-        if post_tip:
-            await query.message.reply_text(
-                f"📊 *Payment Insight*\n\n{post_tip}\n\n"
-                f"_Want to apply for a better card? Tap Credit Cards in the menu._",
-                parse_mode="Markdown",
+        from bot.models.cards import RECOMMENDABLE_CARDS, get_card_by_id
+        import httpx
+        from bot.config import GROQ_API_KEY
+
+        products_text = "\n".join(f"- {i['name']} (${i['price']}, category: {i.get('category', 'general')})" for i in cart_before_clear)
+
+        # Build detailed info for cards user DOESN'T have
+        rec_lines = []
+        for c in RECOMMENDABLE_CARDS:
+            rewards = ", ".join(f"{k}: {v}" for k, v in c.get("rewards", {}).items())
+            rec_lines.append(f"- {c['name']}: {rewards} | {c.get('special', '')}")
+        recs_text = "\n".join(rec_lines)
+
+        messages = [
+            {"role": "system", "content": (
+                "You are a PayPal credit advisor. The user just bought products using their existing card. "
+                "Check if any card they DON'T have would have given better rewards on this purchase. "
+                "If yes, recommend ONE card with a specific benefit in 2 sentences max. "
+                "Include the exact cashback/savings amount. "
+                "If no card would have been significantly better, say nothing — return empty string."
+            )},
+            {"role": "user", "content": f"Products purchased:\n{products_text}\n\nPaid with: PayPal Cashback Mastercard (3% PayPal, 1.5% other)\n\nCards user could apply for:\n{recs_text}\n\nRecommendation:"},
+        ]
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant", "messages": messages, "temperature": 0.3, "max_tokens": 150},
             )
-    except Exception:
-        pass
+            if resp.status_code == 200:
+                tip = resp.json()["choices"][0]["message"]["content"].strip()
+                if tip and len(tip) > 10:
+                    from bot.utils.keyboards import credit_menu_keyboard
+                    await query.message.reply_text(
+                        f"💡 *Smart Savings Tip*\n\n{tip}",
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("💳 Explore Credit Cards", callback_data="topic:credit_menu")],
+                            [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
+                        ]),
+                    )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug(f"Post-purchase tip failed: {e}")
 
 
 async def _poll_checkout_complete(query, user_id: int):

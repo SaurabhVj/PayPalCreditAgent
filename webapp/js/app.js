@@ -666,20 +666,6 @@ async function showShopCheckout() {
         </div>
       `).join('')}
 
-      ${(cardRecs.suggestions || []).length > 0 ? `
-        <div style="font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:16px 0 10px">💡 You Could Earn More With</div>
-        ${cardRecs.suggestions.map(s => `
-          <div style="padding:14px;border:1px dashed rgba(96,205,255,0.4);border-radius:12px;margin-bottom:8px;background:rgba(96,205,255,0.03)">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-              <div>
-                <div style="font-size:14px;font-weight:700;color:var(--text)">${s.name}</div>
-                <div style="font-size:11px;color:var(--blue);margin-top:2px">${s.benefit}</div>
-              </div>
-              <div style="font-size:10px;font-weight:700;color:var(--blue);background:rgba(96,205,255,0.15);padding:4px 10px;border-radius:20px;cursor:pointer">Apply</div>
-            </div>
-          </div>
-        `).join('')}
-      ` : ''}
 
       <button id="shopPayBtn" onclick="processShopPayment(${total})" style="width:100%;padding:14px;margin-top:16px;border:none;border-radius:10px;background:var(--blue);color:#000;font-size:15px;font-weight:800;cursor:pointer">Place Order — $${total}</button>
       <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--dim)">Paying as ${name}</div>
