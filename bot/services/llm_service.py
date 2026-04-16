@@ -96,7 +96,7 @@ You help with shopping and credit cards but right now just have a natural conver
             resp = await client.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.3-70b-versatile", "messages": msgs, "temperature": 0.7, "max_tokens": 300},
+                json={"model": "llama-3.1-8b-instant", "messages": msgs, "temperature": 0.7, "max_tokens": 300},
             )
             if resp.status_code == 200:
                 return resp.json()["choices"][0]["message"]["content"].strip()
