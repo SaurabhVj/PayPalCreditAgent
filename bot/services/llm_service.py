@@ -158,17 +158,28 @@ async def credit_enrichment(products: list[dict], user_portfolio: list[dict]) ->
     if not GROQ_API_KEY or not products:
         return None
 
-    products_text = "\n".join(f"- {p['name']} (${p['price']}, category: {p.get('category', 'general')})" for p in products)
-    cards_text = "\n".join(f"- {c.get('card_id', 'unknown')}: balance ${c.get('balance', 0)}, limit ${c.get('credit_limit', 0)}" for c in user_portfolio)
+    products_text = "\n".join(f"- {p.get('name','item')} (${p.get('price',0)}, category: {p.get('category', 'general')})" for p in products)
+
+    # Get full card details for better recommendations
+    from bot.models.cards import get_card_by_id
+    cards_lines = []
+    for c in user_portfolio:
+        card_info = get_card_by_id(c.get("card_id", ""))
+        if card_info:
+            rewards = ", ".join(f"{k}: {v}" for k, v in card_info.get("rewards", {}).items())
+            cards_lines.append(f"- {card_info['name']}: {rewards} | balance ${c.get('balance', 0)}, limit ${c.get('credit_limit', 0)}")
+        else:
+            cards_lines.append(f"- {c.get('card_id', 'unknown')}: balance ${c.get('balance', 0)}, limit ${c.get('credit_limit', 0)}")
+    cards_text = "\n".join(cards_lines)
 
     messages = [
         {"role": "system", "content": (
-            "You are a PayPal credit advisor. Given products a user is looking at and their card portfolio, "
+            "You are a PayPal credit advisor. Given products a user is buying and their card portfolio with reward details, "
             "suggest the BEST card to use and why, in ONE short sentence. "
             "Focus on concrete savings: cashback %, 0% APR, or specific dollar amounts. "
-            "If no special benefit applies, return empty string."
+            "Example: 'Use PayPal Cashback Mastercard for 3% cashback ($5.10 back) on this purchase via PayPal checkout.'"
         )},
-        {"role": "user", "content": f"Products:\n{products_text}\n\nUser's cards:\n{cards_text}"},
+        {"role": "user", "content": f"Products being purchased:\n{products_text}\n\nUser's available cards:\n{cards_text}\n\nBest card recommendation:"},
     ]
 
     try:

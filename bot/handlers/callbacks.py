@@ -214,11 +214,15 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 from bot.services.llm_service import credit_enrichment
                 from bot.models.cards import DEFAULT_PORTFOLIO
                 portfolio = [{"card_id": c["id"], "balance": c.get("default_balance", 0), "credit_limit": c.get("default_limit", 0)} for c in DEFAULT_PORTFOLIO]
+                import logging
+                logging.getLogger(__name__).info(f"Credit enrichment: {len(cart)} items, {len(portfolio)} cards")
                 tip = await credit_enrichment(cart, portfolio)
+                logging.getLogger(__name__).info(f"Credit tip: {tip}")
                 if tip:
-                    await query.message.reply_text(tip, parse_mode="Markdown")
-            except Exception:
-                pass
+                    await query.message.reply_text(tip)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Credit enrichment failed: {e}")
 
         if not sess.get("name"):
             # Need to login first
