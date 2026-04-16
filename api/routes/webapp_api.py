@@ -80,9 +80,10 @@ async def registered_users():
 
 @router.get("/test-llm")
 async def test_llm(q: str = "recommend a travel card"):
-    from bot.services.llm_service import ask_llm
-    response = await ask_llm(q)
-    return {"query": q, "response": response, "source": "gemini" if response else "fallback"}
+    from bot.services.llm_service import classify_intent, general_response
+    intent = await classify_intent(q, [])
+    resp = await general_response(q, [])
+    return {"query": q, "intent": intent, "response": resp}
 
 
 @router.post("/form-complete")
