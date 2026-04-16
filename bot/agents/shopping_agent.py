@@ -8,8 +8,8 @@ from bot.services.session import get_session
 logger = logging.getLogger(__name__)
 
 
-def search_products(query: str, user_id: int) -> list[dict]:
-    """Search products and return list of product cards to send as photos."""
+async def search_products(query: str, user_id: int) -> list[dict]:
+    """Search products with LLM reranking for relevance."""
     catalog = get_catalog()
     session = get_session(user_id)
 
@@ -20,18 +20,28 @@ def search_products(query: str, user_id: int) -> list[dict]:
         filters["color"] = prefs["color_prefer"][0]
     if prefs.get("color_exclude"):
         filters["color_exclude"] = prefs["color_exclude"]
-    if prefs.get("brand_prefer"):
-        filters["brand"] = prefs["brand_prefer"]
-    if prefs.get("price_max"):
-        filters["max_price"] = prefs["price_max"]
 
-    results = catalog.search(query, filters if filters else None)
-
-    if not results:
-        results = catalog.search(query)
-
-    if not results:
+    # Step 1: Broad keyword search
+    candidates = catalog.search(query, filters if filters else None)
+    if not candidates:
+        candidates = catalog.search(query)
+    if not candidates:
         return []
+
+    # Step 2: LLM reranking — pick the most relevant products
+    if len(candidates) > 4:
+        from bot.services.llm_service import rerank_products
+        summary = catalog.get_candidates_summary(candidates)
+        selected_ids = await rerank_products(query, summary)
+
+        if selected_ids:
+            # Reorder by LLM's ranking
+            id_to_product = {p["id"]: p for p in candidates}
+            reranked = [id_to_product[pid] for pid in selected_ids if pid in id_to_product]
+            if reranked:
+                candidates = reranked
+
+    results = candidates[:4]
 
     cards = []
     for p in results[:4]:  # Max 4 photo cards

@@ -122,7 +122,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if name == "search_products":
             query = args.get("query", text)
             from bot.agents.shopping_agent import search_products
-            cards = search_products(query, user_id)
+            cards = await search_products(query, user_id)
             if not cards:
                 await update.message.reply_text("🔍 No products found. Try a different search term.")
                 add_message(user_id, "assistant", f"Searched for '{query}' — no results found.")

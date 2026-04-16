@@ -223,6 +223,58 @@ async def _call_groq_with_tools(messages: list[dict]) -> dict | None:
     return None
 
 
+async def rerank_products(query: str, candidates_summary: str) -> list[str]:
+    """Ask LLM to pick the most relevant product IDs from candidates."""
+    if not GROQ_API_KEY:
+        return []
+
+    messages = [
+        {"role": "system", "content": (
+            "You are a product search relevance engine. "
+            "Given a user's search query and a list of candidate products, "
+            "return ONLY the IDs of the products that are relevant to the query. "
+            "Return a JSON array of product IDs, most relevant first. "
+            "Maximum 4 products. Be strict — only include products that genuinely match what the user is looking for. "
+            "For example, if user searches 'Nike Jordan shoes', only return Jordan SHOES, not Nike t-shirts or other Nike products."
+        )},
+        {"role": "user", "content": f"Query: {query}\n\nCandidates:\n{candidates_summary}\n\nReturn JSON array of matching product IDs:"},
+    ]
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "llama-3.1-8b-instant",  # Fast model for reranking
+                    "messages": messages,
+                    "temperature": 0,
+                    "max_tokens": 100,
+                    "response_format": {"type": "json_object"},
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                parsed = json.loads(content)
+                # Handle both {"ids": [...]} and direct [...]
+                if isinstance(parsed, list):
+                    ids = parsed
+                elif isinstance(parsed, dict):
+                    ids = parsed.get("ids", parsed.get("product_ids", parsed.get("results", [])))
+                else:
+                    ids = []
+                logger.info(f"Reranking: {len(ids)} products selected from candidates")
+                return [str(i) for i in ids][:4]
+    except Exception as e:
+        logger.error(f"Reranking error: {e}")
+
+    return []
+
+
 async def _call_gemini(messages: list[dict], prompt: str, user_message: str,
                        conversation_history: list[dict] | None) -> str | None:
     """Fallback to Gemini — text only, no tool calling."""

@@ -55,14 +55,15 @@ class DummyCatalog(ProductCatalog):
         logger.info(f"Loaded {len(self.products)} products from {len(self.stores)} stores")
 
     def search(self, query: str, filters: dict | None = None) -> list[dict]:
+        """Broad search — returns candidates. LLM reranks these."""
         query_lower = query.lower()
+        query_words = query_lower.split()
         results = []
 
         for p in self.products.values():
-            # Match against name, brand, category, tags
             searchable = f"{p['name']} {p.get('brand','')} {p.get('category','')} {' '.join(p.get('tags',[]))}".lower()
-            if query_lower in searchable or any(word in searchable for word in query_lower.split()):
-                # Apply filters
+
+            if any(word in searchable for word in query_words):
                 if filters:
                     if "color" in filters and filters["color"]:
                         if filters["color"].lower() not in [c.lower() for c in p.get("colors", [])]:
@@ -70,23 +71,17 @@ class DummyCatalog(ProductCatalog):
                     if "color_exclude" in filters and filters["color_exclude"]:
                         if any(c.lower() in [pc.lower() for pc in p.get("colors", [])] for c in filters["color_exclude"]):
                             continue
-                    if "brand" in filters and filters["brand"]:
-                        if p.get("brand", "").lower() not in [b.lower() for b in filters["brand"]]:
-                            continue
-                    if "max_price" in filters and filters["max_price"]:
-                        if p.get("price", 0) > filters["max_price"]:
-                            continue
-                    if "min_price" in filters and filters["min_price"]:
-                        if p.get("price", 0) < filters["min_price"]:
-                            continue
                 results.append(p)
 
-        # Sort by relevance (exact name match first, then brand match)
-        results.sort(key=lambda p: (
-            0 if query_lower in p["name"].lower() else 1,
-            p.get("price", 0),
-        ))
-        return results[:10]  # Max 10 results
+        return results[:15]
+
+
+    def get_candidates_summary(self, products: list[dict]) -> str:
+        """Format candidates for LLM reranking."""
+        lines = []
+        for p in products:
+            lines.append(f"ID:{p['id']} | {p['name']} | {p.get('brand','')} | ${p['price']} | {p.get('category','')} | tags:{','.join(p.get('tags',[]))} | {'in_stock' if p.get('in_stock') else 'out_of_stock'}")
+        return "\n".join(lines)
 
     def get_product(self, product_id: str) -> dict | None:
         return self.products.get(product_id)
