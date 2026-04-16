@@ -572,16 +572,43 @@ async function submitForm() {
 async function showShopCheckout() {
   const params = new URLSearchParams(window.location.search);
   const tgUserId = params.get('uid') || tg?.initDataUnsafe?.user?.id || 'unknown';
-  let cartData = {cart: [], total: 0, name: 'User'};
 
-  try {
-    const resp = await fetch(`${API}/cart-data?telegram_user_id=${tgUserId}`);
-    cartData = await resp.json();
-  } catch(e) {}
+  // Read cart from URL params (primary) or API (fallback)
+  let cart = [];
+  let total = parseFloat(params.get('total') || '0');
+  let name = decodeURIComponent(params.get('name') || 'User');
 
-  const cart = cartData.cart || [];
-  const total = cartData.total || 0;
-  const name = cartData.name || 'User';
+  const itemsParam = params.get('items');
+  if (itemsParam) {
+    // Parse items from URL: "icon+name|price|qty,icon+name|price|qty"
+    try {
+      const decoded = decodeURIComponent(itemsParam);
+      decoded.split(',').forEach(item => {
+        const parts = item.split('|');
+        if (parts.length >= 3) {
+          const nameStr = parts[0];
+          const icon = nameStr.substring(0, 2);
+          const pname = nameStr.substring(2) || nameStr;
+          cart.push({icon: icon, name: pname, price: parseFloat(parts[1]), qty: parseInt(parts[2])});
+        }
+      });
+    } catch(e) {}
+  }
+
+  // Fallback to API if URL params didn't have items
+  if (!cart.length) {
+    try {
+      const resp = await fetch(`${API}/cart-data?telegram_user_id=${tgUserId}`);
+      const cartData = await resp.json();
+      cart = cartData.cart || [];
+      total = cartData.total || 0;
+      name = cartData.name || name;
+    } catch(e) {}
+  }
+
+  if (!total && cart.length) {
+    total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  }
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:100;overflow-y:auto';
@@ -626,24 +653,40 @@ async function processShopPayment(total) {
   btn.style.opacity = '0.6';
   btn.disabled = true;
 
+  // Get user ID from multiple sources
   const params = new URLSearchParams(window.location.search);
   const tgUserId = params.get('uid') || tg?.initDataUnsafe?.user?.id || 'unknown';
+
+  // Notify backend
   try {
     await fetch(`${API}/checkout-complete?telegram_user_id=${tgUserId}&total=${total}`, {method: 'POST'});
-  } catch(e) {}
+    console.log('Checkout complete sent for uid:', tgUserId);
+  } catch(e) {
+    console.error('Checkout notify failed:', e);
+  }
 
   await sleep(1500);
   btn.textContent = '✓ Payment Successful!';
   btn.style.background = '#00a884';
 
   await sleep(800);
-  if (tg) try { tg.close(); } catch(e) {}
 
-  // Fallback
-  await sleep(1000);
-  btn.textContent = 'Close this window to return to chat';
-  btn.style.background = 'rgba(96,205,255,0.2)';
-  btn.style.color = 'var(--blue)';
+  // Try to close Mini App
+  if (tg) {
+    try { tg.close(); } catch(e) {}
+  }
+
+  // Fallback if close didn't work
+  await sleep(1500);
+  const overlay = btn.closest('div[style*="position:absolute"]') || btn.parentElement;
+  if (overlay) {
+    overlay.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;padding:20px">
+        <div style="font-size:3rem">✅</div>
+        <div style="font-size:18px;font-weight:800;color:#fff">Payment Successful!</div>
+        <div style="font-size:14px;color:var(--dim);text-align:center">Close this window to return to chat.<br>Your order confirmation will appear there.</div>
+      </div>`;
+  }
 }
 
 // ── Auto-start ──

@@ -206,6 +206,20 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "shop:checkout":
         from bot.services.session import get_session as _get_sess
         sess = _get_sess(user_id)
+
+        # Credit card recommendation before checkout
+        cart = sess.get("cart", [])
+        if cart:
+            try:
+                from bot.services.llm_service import credit_enrichment
+                from bot.models.cards import DEFAULT_PORTFOLIO
+                portfolio = [{"card_id": c["id"], "balance": c.get("default_balance", 0), "credit_limit": c.get("default_limit", 0)} for c in DEFAULT_PORTFOLIO]
+                tip = await credit_enrichment(cart, portfolio)
+                if tip:
+                    await query.message.reply_text(tip, parse_mode="Markdown")
+            except Exception:
+                pass
+
         if not sess.get("name"):
             # Need to login first
             login_url = f"{WEBAPP_URL}/webapp?mode=login"
@@ -222,9 +236,13 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             asyncio.create_task(_poll_login_then_checkout(query, user_id))
         else:
             # Already connected — open Mini App checkout
-            checkout_url = f"{WEBAPP_URL}/webapp?mode=checkout&uid={user_id}"
             cart = sess.get("cart", [])
             total = sum(i["price"] * i["qty"] for i in cart)
+            name = sess.get("name", "User")
+            # Encode cart summary into URL params so Mini App doesn't need API call
+            import urllib.parse
+            items_param = urllib.parse.quote(",".join(f"{i['icon']}{i['name']}|{i['price']}|{i['qty']}" for i in cart[:5]))
+            checkout_url = f"{WEBAPP_URL}/webapp?mode=checkout&uid={user_id}&total={total}&name={urllib.parse.quote(name)}&items={items_param}"
             await query.message.reply_text(
                 f"💳 *Checkout — ${total}*\n\n"
                 f"Tap below to review and pay:",
@@ -703,13 +721,14 @@ async def _handle_shop_pay(query, user_id: int):
     await query.message.reply_text("💳 _Processing payment via PayPal..._", parse_mode="Markdown")
     await asyncio.sleep(2)
 
+    cart_before_clear = list(cart)  # Save for post-purchase analysis
     items_summary = ", ".join(f"{i['name']}" for i in cart)
 
     # Save orders to DB
     for item in cart:
         try:
             from bot.services.database import add_order
-            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), "PayPal")
+            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), "PayPal Cashback Mastercard")
         except Exception:
             pass
 
@@ -719,7 +738,7 @@ async def _handle_shop_pay(query, user_id: int):
         f"🎉 *Order Confirmed!*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"💰 Amount: *${total}*\n"
-        f"💳 Paid via: PayPal\n"
+        f"💳 Paid via: PayPal Cashback Mastercard\n"
         f"👤 Buyer: {name}\n"
         f"📦 Items: {items_summary}\n"
         f"🚚 Estimated delivery: 3-5 business days\n\n"
@@ -730,6 +749,25 @@ async def _handle_shop_pay(query, user_id: int):
             [InlineKeyboardButton("📋 Main Menu", callback_data="topic:menu_show")],
         ]),
     )
+
+    # Post-purchase credit analysis — could you have saved more?
+    try:
+        from bot.services.llm_service import credit_enrichment
+        from bot.models.cards import RECOMMENDABLE_CARDS
+        # Show what other cards could have earned
+        other_cards = [{"card_id": c["id"], "balance": 0, "credit_limit": 10000} for c in RECOMMENDABLE_CARDS]
+        post_tip = await credit_enrichment(
+            [{"name": i["name"], "price": i["price"], "category": i.get("category", "")} for i in cart_before_clear],
+            other_cards,
+        )
+        if post_tip:
+            await query.message.reply_text(
+                f"📊 *Payment Insight*\n\n{post_tip}\n\n"
+                f"_Want to apply for a better card? Tap Credit Cards in the menu._",
+                parse_mode="Markdown",
+            )
+    except Exception:
+        pass
 
 
 async def _poll_checkout_complete(query, user_id: int):
@@ -847,9 +885,11 @@ async def _poll_login_then_checkout(query, user_id: int):
                     await asyncio.sleep(0.5)
 
                     # Open Mini App checkout
-                    checkout_url = f"{WEBAPP_URL}/webapp?mode=checkout&uid={user_id}"
+                    import urllib.parse
                     cart = session.get("cart", [])
                     total = sum(i["price"] * i["qty"] for i in cart)
+                    items_param = urllib.parse.quote(",".join(f"{i['icon']}{i['name']}|{i['price']}|{i['qty']}" for i in cart[:5]))
+                    checkout_url = f"{WEBAPP_URL}/webapp?mode=checkout&uid={user_id}&total={total}&name={urllib.parse.quote(data['name'])}&items={items_param}"
                     await query.message.reply_text(
                         f"💳 *Checkout — ${total}*\n\nTap below to review and pay:",
                         parse_mode="Markdown",
