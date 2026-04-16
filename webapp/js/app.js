@@ -570,7 +570,8 @@ async function submitForm() {
 
 // ── Shop Checkout (Mini App) ──
 async function showShopCheckout() {
-  const tgUserId = tg?.initDataUnsafe?.user?.id || 'unknown';
+  const params = new URLSearchParams(window.location.search);
+  const tgUserId = params.get('uid') || tg?.initDataUnsafe?.user?.id || 'unknown';
   let cartData = {cart: [], total: 0, name: 'User'};
 
   try {
@@ -625,7 +626,8 @@ async function processShopPayment(total) {
   btn.style.opacity = '0.6';
   btn.disabled = true;
 
-  const tgUserId = tg?.initDataUnsafe?.user?.id || 'unknown';
+  const params = new URLSearchParams(window.location.search);
+  const tgUserId = params.get('uid') || tg?.initDataUnsafe?.user?.id || 'unknown';
   try {
     await fetch(`${API}/checkout-complete?telegram_user_id=${tgUserId}&total=${total}`, {method: 'POST'});
   } catch(e) {}

@@ -221,8 +221,19 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             asyncio.create_task(_poll_login_then_checkout(query, user_id))
         else:
-            # Already connected — show order summary + pay button
-            await _show_checkout_confirm(query, user_id)
+            # Already connected — open Mini App checkout
+            checkout_url = f"{WEBAPP_URL}/webapp?mode=checkout&uid={user_id}"
+            cart = sess.get("cart", [])
+            total = sum(i["price"] * i["qty"] for i in cart)
+            await query.message.reply_text(
+                f"💳 *Checkout — ${total}*\n\n"
+                f"Tap below to review and pay:",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💳 Pay with PayPal", web_app=WebAppInfo(url=checkout_url))],
+                ]),
+            )
+            asyncio.create_task(_poll_checkout_complete(query, user_id))
 
     elif data == "shop:back":
         await query.message.reply_text("🛍 What would you like to search for? Type a product name.")
@@ -819,7 +830,19 @@ async def _poll_login_then_checkout(query, user_id: int):
                         parse_mode="Markdown",
                     )
                     await asyncio.sleep(0.5)
-                    await _show_checkout_confirm(query, user_id)
+
+                    # Open Mini App checkout
+                    checkout_url = f"{WEBAPP_URL}/webapp?mode=checkout&uid={user_id}"
+                    cart = session.get("cart", [])
+                    total = sum(i["price"] * i["qty"] for i in cart)
+                    await query.message.reply_text(
+                        f"💳 *Checkout — ${total}*\n\nTap below to review and pay:",
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("💳 Pay with PayPal", web_app=WebAppInfo(url=checkout_url))],
+                        ]),
+                    )
+                    asyncio.create_task(_poll_checkout_complete(query, user_id))
                     return
         except Exception:
             pass
