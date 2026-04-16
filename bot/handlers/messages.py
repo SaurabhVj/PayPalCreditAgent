@@ -182,8 +182,15 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cards = search_products(search_query, user_id)
             if not cards:
                 await update.message.reply_text("🔍 No products found. Try a different search term.")
+                add_message(user_id, "assistant", f"Searched for '{search_query}' — no results found.")
             else:
                 await update.message.reply_text(f"🔍 Found {len(cards)} result(s):")
+                # Store what was shown in history so LLM knows context
+                shown = ", ".join(f"{c['name']} (${c['price']})" for c in cards)
+                add_message(user_id, "assistant", f"Showed {len(cards)} products for '{search_query}': {shown}")
+                # Store last search query in session for "show more"
+                session["last_search"] = search_query
+
                 for card in cards:
                     sent = False
                     if card.get("image"):
@@ -198,7 +205,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         except Exception:
                             pass
                     if not sent:
-                        # Fallback: text-only card
                         await update.message.reply_text(
                             f"{card['icon']} {card['caption']}",
                             parse_mode="Markdown",
