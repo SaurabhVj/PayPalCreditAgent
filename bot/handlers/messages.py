@@ -185,21 +185,20 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 await update.message.reply_text(f"🔍 Found {len(cards)} result(s):")
                 for card in cards:
-                    try:
-                        if card.get("image"):
+                    sent = False
+                    if card.get("image"):
+                        try:
                             await update.message.reply_photo(
                                 photo=card["image"],
                                 caption=card["caption"],
                                 parse_mode="Markdown",
                                 reply_markup=card["keyboard"],
                             )
-                        else:
-                            await update.message.reply_text(
-                                f"{card['icon']} {card['caption']}",
-                                parse_mode="Markdown",
-                                reply_markup=card["keyboard"],
-                            )
-                    except Exception:
+                            sent = True
+                        except Exception:
+                            pass
+                    if not sent:
+                        # Fallback: text-only card
                         await update.message.reply_text(
                             f"{card['icon']} {card['caption']}",
                             parse_mode="Markdown",

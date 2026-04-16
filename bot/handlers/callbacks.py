@@ -204,10 +204,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
 
     elif data == "shop:checkout":
-        # Check if PayPal connected
         from bot.services.session import get_session as _get_sess
         sess = _get_sess(user_id)
         if not sess.get("name"):
+            # Need to login first
             login_url = f"{WEBAPP_URL}/webapp?mode=login"
             cart = sess.get("cart", [])
             total = sum(i["price"] * i["qty"] for i in cart)
@@ -221,15 +221,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             asyncio.create_task(_poll_login_then_checkout(query, user_id))
         else:
-            checkout_url = f"{WEBAPP_URL}/webapp?mode=checkout"
-            await query.message.reply_text(
-                "💳 *Ready to pay!*\n\nTap below to complete your purchase:",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💳 Pay with PayPal", web_app=WebAppInfo(url=checkout_url))],
-                ]),
-            )
-            asyncio.create_task(_poll_checkout_complete(query, user_id))
+            # Already connected — show order summary + pay button
+            await _show_checkout_confirm(query, user_id)
 
     elif data == "shop:back":
         await query.message.reply_text("🛍 What would you like to search for? Type a product name.")
