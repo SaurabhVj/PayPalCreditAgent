@@ -51,7 +51,19 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "topic:collections":
         await _handle_collections(query)
 
-    elif data == "topic:menu_show":
+    elif data == "topic:shop":
+        await query.message.reply_text("🛍 What would you like to shop for? Type a product name like:\n\n• _Nike Jordan_\n• _headphones_\n• _baby diapers_\n• _coffee machine_", parse_mode="Markdown")
+
+    elif data == "topic:credit_menu":
+        from bot.utils.keyboards import credit_menu_keyboard
+        await query.message.reply_text("💳 *Credit Services*\n\nWhat would you like to do?", parse_mode="Markdown", reply_markup=credit_menu_keyboard())
+
+    elif data == "topic:cart":
+        from bot.agents.shopping_agent import get_cart_message
+        msg, kb = get_cart_message(user_id)
+        await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
+
+    elif data == "topic:main_menu" or data == "topic:menu_show":
         await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard())
 
     # ── Auth flow — after Mini App login completes ──

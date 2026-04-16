@@ -6,8 +6,24 @@ from bot.config import WEBAPP_URL
 
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
-    """2x2 topic menu grid."""
+    """Main menu with shopping + credit options."""
     buttons = [
+        [InlineKeyboardButton("🛍 Shop Products", callback_data="topic:shop")],
+        [
+            InlineKeyboardButton("💳 Credit Cards", callback_data="topic:credit_menu"),
+            InlineKeyboardButton("🛒 My Cart", callback_data="topic:cart"),
+        ],
+    ]
+    if WEBAPP_URL and WEBAPP_URL.startswith("https://"):
+        buttons.append([
+            InlineKeyboardButton("📱 Open Full App", web_app=WebAppInfo(url=WEBAPP_URL + "/webapp")),
+        ])
+    return InlineKeyboardMarkup(buttons)
+
+
+def credit_menu_keyboard() -> InlineKeyboardMarkup:
+    """Credit-specific submenu."""
+    return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("💳 Apply for Credit", callback_data="topic:credit"),
             InlineKeyboardButton("🎁 View Rewards", callback_data="topic:rewards"),
@@ -16,12 +32,8 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("📊 Credit Portfolio", callback_data="topic:portfolio"),
             InlineKeyboardButton("⚖️ Collections", callback_data="topic:collections"),
         ],
-    ]
-    if WEBAPP_URL and WEBAPP_URL.startswith("https://"):
-        buttons.append([
-            InlineKeyboardButton("📱 Open Full App", web_app=WebAppInfo(url=WEBAPP_URL + "/webapp")),
-        ])
-    return InlineKeyboardMarkup(buttons)
+        [InlineKeyboardButton("← Back to Menu", callback_data="topic:main_menu")],
+    ])
 
 
 def post_approval_keyboard() -> InlineKeyboardMarkup:
