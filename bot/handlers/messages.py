@@ -149,15 +149,14 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     if llm_response:
-        action, clean_msg = parse_action(llm_response)
+        action, clean_msg, extra = parse_action(llm_response)
 
         # Send the LLM's message (if any)
         if clean_msg:
             await update.message.reply_text(clean_msg)
-            # Store bot response in history
             add_message(user_id, "assistant", clean_msg)
 
-        # Trigger workflow if action detected — same flows as buttons
+        # Trigger workflow if action detected
         if action == "credit":
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
             from bot.config import WEBAPP_URL
@@ -177,6 +176,15 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             from bot.handlers.callbacks import _poll_login
             if WEBAPP_URL and WEBAPP_URL.startswith("https://"):
                 asyncio.create_task(_poll_login_from_message(update, user_id))
+        elif action == "shop":
+            from bot.agents.shopping_agent import search_products
+            search_query = extra or text  # Use extracted query or original message
+            msg, kb = search_products(search_query, user_id)
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
+        elif action == "cart":
+            from bot.agents.shopping_agent import get_cart_message
+            msg, kb = get_cart_message(user_id)
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
         elif action == "balance":
             await update.message.reply_text(
                 balance_message(), parse_mode="Markdown",
@@ -194,10 +202,6 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif action == "rewards":
             await update.message.reply_text(
                 rewards_message(), parse_mode="Markdown",
-            )
-        elif action == "balance":
-            await update.message.reply_text(
-                balance_message(), parse_mode="Markdown",
             )
         elif action == "menu":
             await update.message.reply_text(

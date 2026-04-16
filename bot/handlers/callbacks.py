@@ -51,6 +51,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "topic:collections":
         await _handle_collections(query)
 
+    elif data == "topic:menu_show":
+        await query.message.reply_text("Choose an option:", reply_markup=main_menu_keyboard())
+
     # ── Auth flow — after Mini App login completes ──
     elif data == "auth:connected":
         await _handle_post_login(query, user_id)
@@ -165,6 +168,55 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("proactive:apply"):
         pattern = data.split(":")[2] if len(data.split(":")) > 2 else "travel"
         await _handle_proactive_apply(query, user_id, pattern)
+
+    # ── Shopping callbacks ──
+    elif data.startswith("shop:view:"):
+        product_id = data.split(":", 2)[2]
+        from bot.agents.shopping_agent import view_product
+        msg, kb = view_product(product_id, user_id)
+        await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
+
+    elif data.startswith("shop:add:"):
+        product_id = data.split(":", 2)[2]
+        from bot.agents.shopping_agent import add_to_cart, get_cart_message
+        result = add_to_cart(product_id, user_id)
+        await query.message.reply_text(result, parse_mode="Markdown")
+        msg, kb = get_cart_message(user_id)
+        await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
+
+    elif data.startswith("shop:remove:"):
+        product_id = data.split(":", 2)[2]
+        from bot.agents.shopping_agent import remove_from_cart, get_cart_message
+        remove_from_cart(product_id, user_id)
+        msg, kb = get_cart_message(user_id)
+        await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
+
+    elif data == "shop:checkout":
+        await _handle_shop_checkout(query, user_id)
+
+    elif data == "shop:back":
+        await query.message.reply_text("🛍 What would you like to search for? Type a product name.")
+
+    elif data == "shop:pay":
+        await _handle_shop_pay(query, user_id)
+
+    elif data == "shop:showcart":
+        from bot.agents.shopping_agent import get_cart_message
+        msg, kb = get_cart_message(user_id)
+        await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
+
+    elif data.startswith("shop:wishlist:"):
+        product_id = data.split(":", 2)[2]
+        from bot.services.catalog import get_catalog
+        p = get_catalog().get_product(product_id)
+        name = p["name"] if p else "Item"
+        # Store in session wishlist
+        session = get_session(user_id)
+        if "wishlist" not in session:
+            session["wishlist"] = []
+        if product_id not in [w["product_id"] for w in session["wishlist"]]:
+            session["wishlist"].append({"product_id": product_id, "name": name})
+        await query.message.reply_text(f"💜 *{name}* added to your wishlist.\nI'll notify you when it's back in stock!", parse_mode="Markdown")
 
     elif data.startswith("proactive:submit"):
         await _handle_proactive_submit(query, user_id)
@@ -589,6 +641,126 @@ async def _handle_proactive_offer(query, user_id: int, pattern: str):
             [InlineKeyboardButton("❌ Maybe later", callback_data="proactive:no")],
         ]),
     )
+
+
+async def _handle_shop_pay(query, user_id: int):
+    """Process payment — simulated."""
+    from bot.services.session import get_session
+    from bot.agents.shopping_agent import clear_cart
+    session = get_session(user_id)
+    cart = session.get("cart", [])
+    name = session.get("name", "User")
+    total = sum(i["price"] * i["qty"] for i in cart)
+
+    await query.message.chat.send_action(ChatAction.TYPING)
+    await query.message.reply_text("💳 _Processing payment via PayPal..._", parse_mode="Markdown")
+    await asyncio.sleep(2)
+
+    items_summary = ", ".join(f"{i['name']}" for i in cart)
+    clear_cart(user_id)
+
+    await query.message.reply_text(
+        f"🎉 *Order Confirmed!*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"💰 Amount: *${total}*\n"
+        f"💳 Paid via: PayPal\n"
+        f"👤 Buyer: {name}\n"
+        f"📦 Items: {items_summary}\n"
+        f"🚚 Estimated delivery: 3-5 business days\n\n"
+        f"Thank you for your purchase! 🛍",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🛍 Shop More", callback_data="shop:back")],
+            [InlineKeyboardButton("📋 Main Menu", callback_data="topic:menu_show")],
+        ]),
+    )
+
+
+async def _handle_shop_checkout(query, user_id: int):
+    """Handle shopping cart checkout — PayPal connect + confirm."""
+    from bot.services.session import get_session
+    session = get_session(user_id)
+    cart = session.get("cart", [])
+
+    if not cart:
+        await query.message.reply_text("🛒 Your cart is empty!")
+        return
+
+    total = sum(i["price"] * i["qty"] for i in cart)
+    name = session.get("name", "")
+
+    if not name:
+        # Need to connect PayPal first
+        login_url = f"{WEBAPP_URL}/webapp?mode=login"
+        await query.message.reply_text(
+            "💳 *Checkout via PayPal*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Cart total: *${total}*\n\n"
+            "Connect your PayPal account to complete the purchase.",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔐 Connect with PayPal", web_app=WebAppInfo(url=login_url))],
+            ]),
+        )
+        # After login, show checkout confirmation
+        asyncio.create_task(_poll_login_then_checkout(query, user_id))
+    else:
+        # Already connected — show order summary + confirm
+        await _show_checkout_confirm(query, user_id)
+
+
+async def _show_checkout_confirm(query, user_id: int):
+    """Show checkout confirmation with order summary."""
+    from bot.services.session import get_session
+    session = get_session(user_id)
+    cart = session.get("cart", [])
+    name = session.get("name", "User")
+    total = sum(i["price"] * i["qty"] for i in cart)
+
+    lines = [
+        "✅ *Order Summary*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    ]
+    for item in cart:
+        lines.append(f"{item['icon']} {item['name']} × {item['qty']} — *${item['price'] * item['qty']}*")
+    lines.append(f"\n━━━━━━━━━━━━━━━━━━━━━━━━━\n💰 Total: *${total}*")
+    lines.append(f"👤 Buyer: {name}")
+    lines.append(f"💳 Payment: PayPal")
+
+    await query.message.reply_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("💳 Pay with PayPal", callback_data="shop:pay")],
+            [InlineKeyboardButton("← Back to Cart", callback_data="shop:showcart")],
+        ]),
+    )
+
+
+async def _poll_login_then_checkout(query, user_id: int):
+    """Poll for login completion, then show checkout."""
+    import httpx
+    for _ in range(30):
+        await asyncio.sleep(2)
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{WEBAPP_URL}/api/login-status?telegram_user_id={user_id}")
+                data = resp.json()
+                if data.get("done"):
+                    from bot.services.session import get_session
+                    session = get_session(user_id)
+                    session["name"] = data["name"]
+                    session["email"] = data["email"]
+
+                    await query.message.reply_text(
+                        f"✅ *Connected as {data['name']}*",
+                        parse_mode="Markdown",
+                    )
+                    await asyncio.sleep(0.5)
+                    await _show_checkout_confirm(query, user_id)
+                    return
+        except Exception:
+            pass
 
 
 async def _handle_proactive_submit(query, user_id: int):

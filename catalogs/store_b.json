@@ -1,0 +1,21 @@
+{
+  "store_name": "TechWorld",
+  "category": "Electronics & Gadgets",
+  "products": [
+    {"id": "sb-001", "name": "iPhone 16 Pro", "brand": "Apple", "price": 1199, "category": "electronics", "icon": "📱", "colors": ["Natural Titanium", "Black Titanium", "White Titanium", "Desert Titanium"], "sizes": ["256GB", "512GB", "1TB"], "in_stock": true, "tags": ["iphone", "smartphone", "apple", "phone"]},
+    {"id": "sb-002", "name": "MacBook Air M3 15-inch", "brand": "Apple", "price": 1299, "category": "electronics", "icon": "💻", "colors": ["Midnight", "Starlight", "Space Gray", "Silver"], "sizes": ["256GB", "512GB", "1TB"], "in_stock": true, "tags": ["macbook", "laptop", "apple", "computer"]},
+    {"id": "sb-003", "name": "iPad Air M2", "brand": "Apple", "price": 599, "category": "electronics", "icon": "📲", "colors": ["Space Gray", "Blue", "Purple", "Starlight"], "sizes": ["128GB", "256GB", "512GB", "1TB"], "in_stock": true, "tags": ["ipad", "tablet", "apple"]},
+    {"id": "sb-004", "name": "Sony WH-1000XM5 Headphones", "brand": "Sony", "price": 348, "category": "electronics", "icon": "🎧", "colors": ["Black", "Silver", "Midnight Blue"], "sizes": ["One Size"], "in_stock": true, "tags": ["headphones", "noise cancelling", "wireless", "sony"]},
+    {"id": "sb-005", "name": "Samsung Galaxy S24 Ultra", "brand": "Samsung", "price": 1299, "category": "electronics", "icon": "📱", "colors": ["Titanium Black", "Titanium Gray", "Titanium Violet", "Titanium Yellow"], "sizes": ["256GB", "512GB", "1TB"], "in_stock": true, "tags": ["samsung", "galaxy", "smartphone", "phone"]},
+    {"id": "sb-006", "name": "Samsung Galaxy Watch 6", "brand": "Samsung", "price": 249, "category": "electronics", "icon": "⌚", "colors": ["Graphite", "Silver", "Gold"], "sizes": ["40mm", "44mm"], "in_stock": true, "tags": ["smartwatch", "samsung", "fitness"]},
+    {"id": "sb-007", "name": "Apple AirPods Pro 2", "brand": "Apple", "price": 249, "category": "electronics", "icon": "🎵", "colors": ["White"], "sizes": ["One Size"], "in_stock": true, "tags": ["airpods", "earbuds", "wireless", "apple"]},
+    {"id": "sb-008", "name": "Sony PlayStation 5 Slim", "brand": "Sony", "price": 449, "category": "electronics", "icon": "🎮", "colors": ["White", "Black"], "sizes": ["Disc Edition", "Digital Edition"], "in_stock": false, "tags": ["playstation", "ps5", "gaming", "console"]},
+    {"id": "sb-009", "name": "Nintendo Switch OLED", "brand": "Nintendo", "price": 349, "category": "electronics", "icon": "🎮", "colors": ["White", "Neon Blue/Red"], "sizes": ["64GB"], "in_stock": true, "tags": ["nintendo", "switch", "gaming", "portable"]},
+    {"id": "sb-010", "name": "Kindle Paperwhite", "brand": "Amazon", "price": 139, "category": "electronics", "icon": "📚", "colors": ["Black", "Denim", "Agave Green"], "sizes": ["16GB", "32GB"], "in_stock": true, "tags": ["kindle", "ebook", "reader", "amazon"]},
+    {"id": "sb-011", "name": "Bose QuietComfort Ultra", "brand": "Bose", "price": 429, "category": "electronics", "icon": "🎧", "colors": ["Black", "White Smoke", "Lunar Blue"], "sizes": ["One Size"], "in_stock": true, "tags": ["headphones", "noise cancelling", "bose", "premium"]},
+    {"id": "sb-012", "name": "GoPro Hero 12 Black", "brand": "GoPro", "price": 349, "category": "electronics", "icon": "📷", "colors": ["Black"], "sizes": ["One Size"], "in_stock": true, "tags": ["gopro", "action camera", "camera", "sports"]},
+    {"id": "sb-013", "name": "Apple Watch Series 9", "brand": "Apple", "price": 399, "category": "electronics", "icon": "⌚", "colors": ["Midnight", "Starlight", "Silver", "Pink", "Red"], "sizes": ["41mm", "45mm"], "in_stock": true, "tags": ["apple watch", "smartwatch", "fitness", "apple"]},
+    {"id": "sb-014", "name": "Samsung Galaxy Tab S9", "brand": "Samsung", "price": 799, "category": "electronics", "icon": "📲", "colors": ["Graphite", "Beige"], "sizes": ["128GB", "256GB"], "in_stock": false, "tags": ["tablet", "samsung", "galaxy tab"]},
+    {"id": "sb-015", "name": "JBL Charge 5 Speaker", "brand": "JBL", "price": 179, "category": "electronics", "icon": "🔊", "colors": ["Black", "Blue", "Red", "Green", "Grey"], "sizes": ["One Size"], "in_stock": true, "tags": ["speaker", "bluetooth", "portable", "jbl"]}
+  ]
+}

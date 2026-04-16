@@ -1,0 +1,21 @@
+{
+  "store_name": "StyleHub",
+  "category": "Fashion & Shoes",
+  "products": [
+    {"id": "sa-001", "name": "Nike Air Jordan 1 Retro High", "brand": "Nike", "price": 170, "category": "shoes", "icon": "👟", "colors": ["White", "Black", "Red", "Blue", "Chicago"], "sizes": ["7", "8", "9", "10", "11", "12"], "in_stock": true, "tags": ["jordan", "sneakers", "basketball", "retro"]},
+    {"id": "sa-002", "name": "Nike Air Jordan 4 Retro", "brand": "Nike", "price": 210, "category": "shoes", "icon": "👟", "colors": ["Military Black", "White", "Bred"], "sizes": ["7", "8", "9", "10", "11", "12"], "in_stock": true, "tags": ["jordan", "sneakers", "retro"]},
+    {"id": "sa-003", "name": "Nike Air Jordan 11 Concord", "brand": "Nike", "price": 225, "category": "shoes", "icon": "👟", "colors": ["Concord", "Space Jam", "Cherry"], "sizes": ["8", "9", "10", "11"], "in_stock": false, "tags": ["jordan", "sneakers", "premium"]},
+    {"id": "sa-004", "name": "Nike Air Jordan Low SE", "brand": "Nike", "price": 130, "category": "shoes", "icon": "👟", "colors": ["Blue", "White", "Black", "Grey"], "sizes": ["7", "8", "9", "10", "11", "12", "13"], "in_stock": true, "tags": ["jordan", "sneakers", "casual", "low"]},
+    {"id": "sa-005", "name": "Nike Air Max 270", "brand": "Nike", "price": 150, "category": "shoes", "icon": "👟", "colors": ["Black", "White", "Blue", "Red", "Green"], "sizes": ["7", "8", "9", "10", "11", "12"], "in_stock": true, "tags": ["air max", "running", "casual"]},
+    {"id": "sa-006", "name": "Adidas Ultraboost 23", "brand": "Adidas", "price": 190, "category": "shoes", "icon": "👟", "colors": ["Core Black", "Cloud White", "Blue"], "sizes": ["7", "8", "9", "10", "11", "12"], "in_stock": true, "tags": ["ultraboost", "running", "comfort"]},
+    {"id": "sa-007", "name": "Adidas Stan Smith", "brand": "Adidas", "price": 85, "category": "shoes", "icon": "👟", "colors": ["White/Green", "White/Navy", "All White"], "sizes": ["6", "7", "8", "9", "10", "11", "12"], "in_stock": true, "tags": ["classic", "casual", "tennis"]},
+    {"id": "sa-008", "name": "Levi's 501 Original Jeans", "brand": "Levi's", "price": 69, "category": "clothing", "icon": "👖", "colors": ["Indigo", "Black", "Light Wash", "Dark Wash"], "sizes": ["28", "30", "32", "34", "36", "38"], "in_stock": true, "tags": ["jeans", "denim", "classic"]},
+    {"id": "sa-009", "name": "Levi's 511 Slim Fit Jeans", "brand": "Levi's", "price": 79, "category": "clothing", "icon": "👖", "colors": ["Dark Blue", "Black", "Grey"], "sizes": ["28", "30", "32", "34", "36"], "in_stock": true, "tags": ["jeans", "slim", "denim"]},
+    {"id": "sa-010", "name": "Ray-Ban Aviator Classic", "brand": "Ray-Ban", "price": 154, "category": "accessories", "icon": "🕶", "colors": ["Gold/Green", "Gold/Brown", "Silver/Blue"], "sizes": ["55mm", "58mm", "62mm"], "in_stock": true, "tags": ["sunglasses", "aviator", "classic"]},
+    {"id": "sa-011", "name": "North Face Puffer Jacket", "brand": "The North Face", "price": 230, "category": "clothing", "icon": "🧥", "colors": ["Black", "Navy", "Red", "Blue"], "sizes": ["S", "M", "L", "XL", "XXL"], "in_stock": true, "tags": ["jacket", "winter", "puffer", "outdoor"]},
+    {"id": "sa-012", "name": "Nike Dri-FIT T-Shirt", "brand": "Nike", "price": 35, "category": "clothing", "icon": "👕", "colors": ["Black", "White", "Grey", "Blue", "Red"], "sizes": ["S", "M", "L", "XL"], "in_stock": true, "tags": ["tshirt", "gym", "workout", "dri-fit"]},
+    {"id": "sa-013", "name": "Converse Chuck Taylor All Star", "brand": "Converse", "price": 60, "category": "shoes", "icon": "👟", "colors": ["Black", "White", "Red", "Navy", "Pink"], "sizes": ["5", "6", "7", "8", "9", "10", "11", "12"], "in_stock": true, "tags": ["chuck taylor", "canvas", "classic", "casual"]},
+    {"id": "sa-014", "name": "Nike Air Force 1 '07", "brand": "Nike", "price": 110, "category": "shoes", "icon": "👟", "colors": ["White", "Black", "White/Black"], "sizes": ["7", "8", "9", "10", "11", "12", "13"], "in_stock": true, "tags": ["air force", "classic", "casual"]},
+    {"id": "sa-015", "name": "Under Armour Gym Shorts", "brand": "Under Armour", "price": 30, "category": "clothing", "icon": "🩳", "colors": ["Black", "Grey", "Navy", "Blue"], "sizes": ["S", "M", "L", "XL"], "in_stock": false, "tags": ["shorts", "gym", "workout"]}
+  ]
+}

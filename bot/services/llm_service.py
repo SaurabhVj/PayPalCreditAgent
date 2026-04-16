@@ -32,7 +32,16 @@ You can trigger these workflows by including an action tag in your response:
    Trigger: [ACTION:REWARDS]
    When: User asks about rewards, points, cashback, miles, how much they've earned
 
-6. **Show Menu** — Display the main menu with all options
+6. **Shopping / Product Search** — Search for products, browse items, buy things
+   Trigger: [ACTION:SHOP]
+   When: User wants to buy something, search for a product, asks about a specific item
+   IMPORTANT: Extract the search query and include it: [ACTION:SHOP:nike jordan] or [ACTION:SHOP:headphones]
+
+7. **View Cart** — Show shopping cart contents
+   Trigger: [ACTION:CART]
+   When: User asks to see cart, what's in cart, checkout
+
+8. **Show Menu** — Display the main menu with all options
    Trigger: [ACTION:MENU]
    When: User asks "what can you do?", "show menu", "your functionalities", "help", "options", greets with hi/hello
 
@@ -222,19 +231,30 @@ async def _call_gemini(messages: list[dict], prompt: str, user_message: str,
     return None
 
 
-def parse_action(response: str) -> tuple[str | None, str]:
-    """Extract action tag from LLM response and return (action, clean_message)."""
+def parse_action(response: str) -> tuple[str | None, str, str]:
+    """Extract action tag from LLM response. Returns (action, clean_message, extra_data)."""
     if not response:
-        return None, ""
+        return None, "", ""
 
     action = None
     clean = response
+    extra = ""
+
+    # Check for SHOP with query: [ACTION:SHOP:nike jordan]
+    import re
+    shop_match = re.search(r'\[ACTION:SHOP:([^\]]+)\]', response)
+    if shop_match:
+        action = "shop"
+        extra = shop_match.group(1).strip()
+        clean = response.replace(shop_match.group(0), "").strip()
+        return action, clean, extra
 
     for tag in ["[ACTION:CREDIT]", "[ACTION:BALANCE]", "[ACTION:PORTFOLIO]",
-                "[ACTION:COLLECTIONS]", "[ACTION:REWARDS]", "[ACTION:MENU]"]:
+                "[ACTION:COLLECTIONS]", "[ACTION:REWARDS]", "[ACTION:MENU]",
+                "[ACTION:CART]"]:
         if tag in response:
             action = tag.replace("[ACTION:", "").replace("]", "").lower()
             clean = response.replace(tag, "").strip()
             break
 
-    return action, clean
+    return action, clean, extra
