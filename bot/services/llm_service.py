@@ -114,11 +114,12 @@ async def rerank_products(query: str, candidates_summary: str) -> list[str]:
     messages = [
         {"role": "system", "content": (
             "You are a product search relevance engine. "
-            "Given a user's search query and a list of candidate products, "
-            "return ONLY the IDs of products that are relevant to the query. "
-            "Return a JSON array of product IDs, most relevant first. "
-            "Maximum 4 products. Be strict — only include products that genuinely match. "
-            "For example, 'Nike Jordan shoes' should only return Jordan SHOES, not Nike t-shirts."
+            "Given a user's search query and candidate products, return ONLY IDs of products that MATCH the query. "
+            "Return a JSON array of product IDs, most relevant first. Maximum 4. "
+            "Be STRICT: 'headphones' should ONLY return headphones/earbuds, NOT phones or laptops. "
+            "'Nike Jordan shoes' should ONLY return Jordan shoes, NOT t-shirts. "
+            "If query says 'not X' or 'except X', EXCLUDE product X from results. "
+            "If no products match, return empty array []."
         )},
         {"role": "user", "content": f"Query: {query}\n\nCandidates:\n{candidates_summary}\n\nReturn JSON array of matching product IDs:"},
     ]

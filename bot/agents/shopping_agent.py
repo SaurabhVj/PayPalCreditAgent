@@ -71,7 +71,8 @@ class ShoppingAgent:
 
         if tool_call and tool_call["name"] == "search_products":
             query = tool_call["args"].get("query", message)
-            products = await self._search_and_rerank(query, user_id)
+            # Pass original message for negation handling ("not iphone")
+            products = await self._search_and_rerank(query, user_id, original_message=message)
 
             if products:
                 if llm_message:
@@ -93,7 +94,7 @@ class ShoppingAgent:
 
         return response
 
-    async def _search_and_rerank(self, query: str, user_id: int) -> list[dict]:
+    async def _search_and_rerank(self, query: str, user_id: int, original_message: str = "") -> list[dict]:
         """Broad search + LLM reranking → product cards."""
         catalog = get_catalog()
         session = get_session(user_id)
@@ -116,7 +117,8 @@ class ShoppingAgent:
         # Step 2: LLM reranking
         if len(candidates) > 4:
             summary = catalog.get_candidates_summary(candidates)
-            selected_ids = await llm_service.rerank_products(query, summary)
+            rerank_query = original_message if original_message else query
+            selected_ids = await llm_service.rerank_products(rerank_query, summary)
             if selected_ids:
                 id_to_product = {p["id"]: p for p in candidates}
                 reranked = [id_to_product[pid] for pid in selected_ids if pid in id_to_product]
