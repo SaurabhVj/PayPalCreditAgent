@@ -5,3 +5,4 @@ aiosqlite==0.20.*
 anthropic==0.42.*
 httpx==0.28.*
 python-dotenv==1.0.*
+asyncpg==0.30.*

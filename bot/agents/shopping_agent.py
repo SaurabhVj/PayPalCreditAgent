@@ -1,83 +1,169 @@
-"""Shopping Agent — handles product search, cart, and checkout."""
+"""Shopping Agent — handles product search, cart, checkout."""
 
 import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from bot.orchestrator import OrchestratorResult
+from bot.services import llm_service
 from bot.services.catalog import get_catalog
 from bot.services.session import get_session
 
 logger = logging.getLogger(__name__)
 
+SYSTEM_PROMPT = """You are a PayPal Shopping Assistant. You help users find and buy products.
 
-async def search_products(query: str, user_id: int) -> list[dict]:
-    """Search products with LLM reranking for relevance."""
-    catalog = get_catalog()
-    session = get_session(user_id)
+You have these tools:
+- search_products: search for products. Use when user asks for a SPECIFIC product or product type (e.g. "Nike Jordan shoes", "headphones", "baby diapers"). Do NOT use when user says only a brand name without product type.
+- show_cart: show the user's shopping cart
 
-    # Build filters from user preferences
-    prefs = session.get("preferences", {})
-    filters = {}
-    if prefs.get("color_prefer"):
-        filters["color"] = prefs["color_prefer"][0]
-    if prefs.get("color_exclude"):
-        filters["color_exclude"] = prefs["color_exclude"]
+Key behaviors:
+- If user says only a brand name (e.g. "Nike", "Apple") without specifying what type of product → ask "What type of Nike product are you looking for — shoes, clothing, or accessories?"
+- If user says "show more" or "more options" → look at conversation history for the previous search, and search with a broader query
+- When user asks about a product, be helpful and specific
 
-    # Step 1: Broad keyword search
-    candidates = catalog.search(query, filters if filters else None)
-    if not candidates:
-        candidates = catalog.search(query)
-    if not candidates:
-        return []
+Be concise and natural."""
 
-    # Step 2: LLM reranking — pick the most relevant products
-    if len(candidates) > 4:
-        from bot.services.llm_service import rerank_products
-        summary = catalog.get_candidates_summary(candidates)
-        selected_ids = await rerank_products(query, summary)
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_products",
+            "description": "Search for products to buy. Use when user mentions a product TYPE (shoes, headphones, diapers, laptop). Extract the search query.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Product search query, e.g. 'Nike Jordan shoes', 'headphones', 'baby diapers'"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "show_cart",
+            "description": "Show the user's shopping cart contents.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+]
 
-        if selected_ids:
-            # Reorder by LLM's ranking
-            id_to_product = {p["id"]: p for p in candidates}
-            reranked = [id_to_product[pid] for pid in selected_ids if pid in id_to_product]
-            if reranked:
-                candidates = reranked
 
-    results = candidates[:4]
+class ShoppingAgent:
+    async def handle(self, message: str, user_id: int,
+                     history: list[dict], session: dict) -> OrchestratorResult:
+        """Handle shopping-related intent."""
 
-    cards = []
-    for p in results[:4]:  # Max 4 photo cards
-        stock = "✅ In Stock" if p["in_stock"] else "❌ Out of Stock"
-        colors = ", ".join(p.get("colors", [])[:3])
+        messages = []
+        if history:
+            for m in history[-10:]:
+                messages.append({
+                    "role": m["role"] if m["role"] == "user" else "assistant",
+                    "content": m["content"],
+                })
+        messages.append({"role": "user", "content": message})
 
-        caption = (
-            f"*{p['name']}*\n"
-            f"💰 *${p['price']}* · 🏪 {p['store']}\n"
-            f"{stock} · 🎨 {colors}"
-        )
+        result = await llm_service.call_agent(SYSTEM_PROMPT, TOOLS, messages)
 
-        if p["in_stock"]:
-            kb = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("🛒 Add to Cart", callback_data=f"shop:add:{p['id']}"),
-                    InlineKeyboardButton("📋 Details", callback_data=f"shop:view:{p['id']}"),
-                ],
-            ])
+        llm_message = result.get("message")
+        tool_call = result.get("tool_call")
+
+        response = OrchestratorResult(intent="shopping")
+
+        if tool_call and tool_call["name"] == "search_products":
+            query = tool_call["args"].get("query", message)
+            products = await self._search_and_rerank(query, user_id)
+
+            if products:
+                if llm_message:
+                    response.message = llm_message
+                response.products = products
+                # Store what was shown in session for "show more"
+                session["last_search"] = query
+            else:
+                response.message = "🔍 No products found. Try a different search term."
+
+        elif tool_call and tool_call["name"] == "show_cart":
+            response.tool_action = {"name": "show_cart", "args": {}}
+            if llm_message:
+                response.message = llm_message
+
         else:
-            kb = InlineKeyboardMarkup([
-                [InlineKeyboardButton("💜 Add to Wishlist", callback_data=f"shop:wishlist:{p['id']}")],
-            ])
+            # No tool call — just conversational (e.g. "What type of Nike product?")
+            response.message = llm_message or "What are you looking for? I can help you find products."
 
-        cards.append({
-            "image": p.get("image", ""),
-            "caption": caption,
-            "keyboard": kb,
-            "icon": p["icon"],
-            "name": p["name"],
-            "price": p["price"],
-            "product_id": p["id"],
-        })
+        return response
 
-    return cards
+    async def _search_and_rerank(self, query: str, user_id: int) -> list[dict]:
+        """Broad search + LLM reranking → product cards."""
+        catalog = get_catalog()
+        session = get_session(user_id)
 
+        # Build filters from preferences
+        prefs = session.get("preferences", {})
+        filters = {}
+        if prefs.get("color_prefer"):
+            filters["color"] = prefs["color_prefer"][0] if isinstance(prefs["color_prefer"], list) else prefs["color_prefer"]
+        if prefs.get("color_exclude"):
+            filters["color_exclude"] = prefs["color_exclude"]
+
+        # Step 1: Broad search
+        candidates = catalog.search(query, filters if filters else None)
+        if not candidates:
+            candidates = catalog.search(query)
+        if not candidates:
+            return []
+
+        # Step 2: LLM reranking
+        if len(candidates) > 4:
+            summary = catalog.get_candidates_summary(candidates)
+            selected_ids = await llm_service.rerank_products(query, summary)
+            if selected_ids:
+                id_to_product = {p["id"]: p for p in candidates}
+                reranked = [id_to_product[pid] for pid in selected_ids if pid in id_to_product]
+                if reranked:
+                    candidates = reranked
+
+        results = candidates[:4]
+
+        # Format as cards for Telegram
+        cards = []
+        for p in results:
+            stock = "✅ In Stock" if p["in_stock"] else "❌ Out of Stock"
+            colors = ", ".join(p.get("colors", [])[:3])
+
+            caption = (
+                f"*{p['name']}*\n"
+                f"💰 *${p['price']}* · 🏪 {p['store']}\n"
+                f"{stock} · 🎨 {colors}"
+            )
+
+            if p["in_stock"]:
+                kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("🛒 Add to Cart", callback_data=f"shop:add:{p['id']}"),
+                        InlineKeyboardButton("📋 Details", callback_data=f"shop:view:{p['id']}"),
+                    ],
+                ])
+            else:
+                kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💜 Add to Wishlist", callback_data=f"shop:wishlist:{p['id']}")],
+                ])
+
+            cards.append({
+                "image": p.get("image", ""),
+                "caption": caption,
+                "keyboard": kb,
+                "icon": p["icon"],
+                "name": p["name"],
+                "price": p["price"],
+                "category": p.get("category", ""),
+                "product_id": p["id"],
+            })
+
+        return cards
+
+
+# ── Standalone functions used by callbacks.py (unchanged) ──
 
 def view_product(product_id: str, user_id: int) -> tuple[str, InlineKeyboardMarkup | None]:
     """Show product details with options."""
@@ -88,9 +174,9 @@ def view_product(product_id: str, user_id: int) -> tuple[str, InlineKeyboardMark
 
     session = get_session(user_id)
     prefs = session.get("preferences", {})
-
-    # Apply preferences for default selections
-    default_color = prefs.get("color_prefer", [None])[0] or (p["colors"][0] if p.get("colors") else "")
+    default_color = prefs.get("color_prefer", [None])
+    if isinstance(default_color, list):
+        default_color = default_color[0] if default_color else ""
     default_size = prefs.get("shoe_size") or prefs.get("shirt_size") or (p["sizes"][0] if p.get("sizes") else "")
 
     colors = " · ".join(p.get("colors", []))
@@ -130,7 +216,7 @@ def view_product(product_id: str, user_id: int) -> tuple[str, InlineKeyboardMark
 
 
 def add_to_cart(product_id: str, user_id: int) -> str:
-    """Add product to user's cart."""
+    """Add product to user's in-memory cart (session)."""
     catalog = get_catalog()
     p = catalog.get_product(product_id)
     if not p:
@@ -140,13 +226,16 @@ def add_to_cart(product_id: str, user_id: int) -> str:
     if "cart" not in session:
         session["cart"] = []
 
-    # Check if already in cart
     for item in session["cart"]:
         if item["product_id"] == product_id:
             item["qty"] += 1
             return f"🛒 Updated! *{p['name']}* × {item['qty']} in cart."
 
     prefs = session.get("preferences", {})
+    color_pref = prefs.get("color_prefer", [None])
+    if isinstance(color_pref, list):
+        color_pref = color_pref[0] if color_pref else ""
+
     session["cart"].append({
         "product_id": product_id,
         "name": p["name"],
@@ -155,7 +244,7 @@ def add_to_cart(product_id: str, user_id: int) -> str:
         "store": p["store"],
         "category": p.get("category", ""),
         "qty": 1,
-        "color": prefs.get("color_prefer", [None])[0] or (p["colors"][0] if p.get("colors") else ""),
+        "color": color_pref or (p["colors"][0] if p.get("colors") else ""),
         "size": prefs.get("shoe_size") or prefs.get("shirt_size") or (p["sizes"][0] if p.get("sizes") else ""),
     })
 

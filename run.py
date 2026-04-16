@@ -24,6 +24,16 @@ async def main():
     bot_app = create_bot()
     await bot_app.initialize()
     await bot_app.start()
+    # Initialize database
+    from bot.config import DATABASE_URL
+    if DATABASE_URL:
+        try:
+            from bot.services.database import get_pool
+            await get_pool()
+            logger.info("Database connected")
+        except Exception as e:
+            logger.warning(f"Database init failed (continuing without DB): {e}")
+
     await bot_app.updater.start_polling(
         drop_pending_updates=True,
         allowed_updates=["message", "callback_query"],
