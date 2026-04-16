@@ -33,16 +33,16 @@ def search_products(query: str, user_id: int) -> tuple[str, InlineKeyboardMarkup
         if not results:
             return "🔍 No products found. Try a different search term.", None
 
-    lines = ["🔍 *Search Results*\n"]
+    lines = [f"🔍 *Found {len(results)} result(s)*\n"]
     buttons = []
 
     for i, p in enumerate(results[:6]):  # Max 6 results
         stock = "✅ In Stock" if p["in_stock"] else "❌ Out of Stock"
         colors = ", ".join(p.get("colors", [])[:3])
         lines.append(
-            f"{i+1}. *{p['name']}*\n"
-            f"   💰 ${p['price']} · {p['store']} · {stock}\n"
-            f"   🎨 {colors}\n"
+            f"{p['icon']} *{p['name']}*\n"
+            f"   💰 *${p['price']}* · 🏪 {p['store']}\n"
+            f"   {stock} · 🎨 {colors}\n"
         )
 
         if p["in_stock"]:

@@ -192,7 +192,32 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
 
     elif data == "shop:checkout":
-        await _handle_shop_checkout(query, user_id)
+        # Check if PayPal connected
+        from bot.services.session import get_session as _get_sess
+        sess = _get_sess(user_id)
+        if not sess.get("name"):
+            login_url = f"{WEBAPP_URL}/webapp?mode=login"
+            cart = sess.get("cart", [])
+            total = sum(i["price"] * i["qty"] for i in cart)
+            await query.message.reply_text(
+                f"💳 *Checkout — ${total}*\n\n"
+                "Connect your PayPal account to complete the purchase.",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔐 Connect with PayPal", web_app=WebAppInfo(url=login_url))],
+                ]),
+            )
+            asyncio.create_task(_poll_login_then_checkout(query, user_id))
+        else:
+            checkout_url = f"{WEBAPP_URL}/webapp?mode=checkout"
+            await query.message.reply_text(
+                "💳 *Ready to pay!*\n\nTap below to complete your purchase:",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💳 Pay with PayPal", web_app=WebAppInfo(url=checkout_url))],
+                ]),
+            )
+            asyncio.create_task(_poll_checkout_complete(query, user_id))
 
     elif data == "shop:back":
         await query.message.reply_text("🛍 What would you like to search for? Type a product name.")
@@ -674,6 +699,38 @@ async def _handle_shop_pay(query, user_id: int):
             [InlineKeyboardButton("📋 Main Menu", callback_data="topic:menu_show")],
         ]),
     )
+
+
+async def _poll_checkout_complete(query, user_id: int):
+    """Poll for checkout completion from Mini App."""
+    import httpx
+    for _ in range(60):
+        await asyncio.sleep(2)
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{WEBAPP_URL}/api/checkout-status?telegram_user_id={user_id}")
+                data = resp.json()
+                if data.get("done"):
+                    from bot.agents.shopping_agent import clear_cart
+                    from bot.services.session import get_session
+                    session = get_session(user_id)
+                    name = session.get("name", "User")
+                    total = data.get("total", 0)
+                    clear_cart(user_id)
+
+                    await query.message.reply_text(
+                        f"🎉 *Order Confirmed!*\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"💰 Amount: *${total}*\n"
+                        f"💳 Paid via: PayPal\n"
+                        f"👤 Buyer: {name}\n"
+                        f"🚚 Estimated delivery: 3-5 business days\n\n"
+                        f"Thank you for your purchase! 🛍",
+                        parse_mode="Markdown",
+                    )
+                    return
+        except Exception:
+            pass
 
 
 async def _handle_shop_checkout(query, user_id: int):

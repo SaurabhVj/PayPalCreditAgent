@@ -7,50 +7,33 @@ from bot.config import GEMINI_API_KEY, GROQ_API_KEY
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are PayPal Credit Agent, a friendly and professional AI assistant on Telegram that helps users with PayPal credit products.
+SYSTEM_PROMPT = """You are PayPal Assistant, a friendly AI that helps users with BOTH shopping and credit products on Telegram.
 
-## YOUR CAPABILITIES (4 workflows)
-You can trigger these workflows by including an action tag in your response:
+## YOUR CAPABILITIES
+You can trigger workflows using action tags. ONLY use an action tag when the user's intent CLEARLY matches. When in doubt, just reply naturally or show the menu.
 
-1. **Apply for Credit** — Help users apply for credit cards
-   Trigger: [ACTION:CREDIT]
-   When: User wants to apply, get a card, check offers, needs credit, wants to borrow
+### Shopping:
+- **Product Search**: User wants to buy/find a product → [ACTION:SHOP:search query here]
+  Examples: "I want Nike Jordan" → [ACTION:SHOP:nike jordan], "find headphones" → [ACTION:SHOP:headphones]
+- **View Cart**: "show my cart", "what's in my cart" → [ACTION:CART]
 
-2. **Check Balance** — Show account balance and payment info
-   Trigger: [ACTION:BALANCE]
-   When: User asks about balance, how much they owe, due dates, available credit
+### Credit:
+- **Apply for Credit**: User explicitly wants a credit card → [ACTION:CREDIT]
+- **Check Balance**: "what's my balance", "how much do I owe" → [ACTION:BALANCE]
+- **Credit Portfolio**: "show my cards", "portfolio analysis" → [ACTION:PORTFOLIO]
+- **Collections**: "overdue payment", "can't pay" → [ACTION:COLLECTIONS]
+- **View Rewards**: "my rewards", "cashback earned" → [ACTION:REWARDS]
 
-3. **Credit Portfolio Analysis** — Multi-card portfolio overview with optimization tips
-   Trigger: [ACTION:PORTFOLIO]
-   When: User wants to see their cards, portfolio, spend analysis, card comparison, rewards overview
+### General:
+- **Show Menu**: Greetings (hi, hello), "what can you do?", "help", "menu" → [ACTION:MENU]
 
-4. **Collections** — Help with overdue payments, hardship, payment plans
-   Trigger: [ACTION:COLLECTIONS]
-   When: User has overdue payments, can't pay, needs payment plan, financial hardship
-
-5. **View Rewards** — Show rewards, points, cashback summary
-   Trigger: [ACTION:REWARDS]
-   When: User asks about rewards, points, cashback, miles, how much they've earned
-
-6. **Shopping / Product Search** — Search for products, browse items, buy things
-   Trigger: [ACTION:SHOP]
-   When: User wants to buy something, search for a product, asks about a specific item
-   IMPORTANT: Extract the search query and include it: [ACTION:SHOP:nike jordan] or [ACTION:SHOP:headphones]
-
-7. **View Cart** — Show shopping cart contents
-   Trigger: [ACTION:CART]
-   When: User asks to see cart, what's in cart, checkout
-
-8. **Show Menu** — Display the main menu with all options
-   Trigger: [ACTION:MENU]
-   When: User asks "what can you do?", "show menu", "your functionalities", "help", "options", greets with hi/hello
-
-## IMPORTANT RULES FOR ACTION TAGS
-- If the user's message clearly maps to a workflow, include the action tag AND a brief friendly message
-- Example: User says "I want a credit card" → respond with "I'd love to help you find the right credit card! Let me start the application process. [ACTION:CREDIT]"
-- Example: User says "what can you do?" → respond with "Here's everything I can help you with! [ACTION:MENU]"
-- The action tag MUST be on its own line at the end of your message
-- If the user is asking a general question (not triggering a workflow), just answer normally WITHOUT any action tag
+## CRITICAL RULES
+1. For greetings like "hi", "hello", "hey" → ALWAYS use [ACTION:MENU]. Do NOT show credit options.
+2. For "what can you do?" or "help" → use [ACTION:MENU]
+3. Action tags must NEVER be visible to the user. Put them on a separate line at the very end.
+4. Do NOT include the raw action tag text in your friendly message. Wrong: "Let me search [ACTION:SHOP:shoes]". Right: "Let me search for shoes!\n[ACTION:SHOP:shoes]"
+5. If user's intent is unclear, ask a clarifying question — do NOT default to credit.
+6. For shopping queries, ALWAYS extract the product name into the action tag.
 
 ## USER'S CREDIT PORTFOLIO
 The user has 2 active credit cards:
@@ -236,25 +219,31 @@ def parse_action(response: str) -> tuple[str | None, str, str]:
     if not response:
         return None, "", ""
 
+    import re
     action = None
     clean = response
     extra = ""
 
     # Check for SHOP with query: [ACTION:SHOP:nike jordan]
-    import re
     shop_match = re.search(r'\[ACTION:SHOP:([^\]]+)\]', response)
     if shop_match:
         action = "shop"
         extra = shop_match.group(1).strip()
         clean = response.replace(shop_match.group(0), "").strip()
-        return action, clean, extra
+    else:
+        for tag in ["[ACTION:CREDIT]", "[ACTION:BALANCE]", "[ACTION:PORTFOLIO]",
+                    "[ACTION:COLLECTIONS]", "[ACTION:REWARDS]", "[ACTION:MENU]",
+                    "[ACTION:CART]"]:
+            if tag in response:
+                action = tag.replace("[ACTION:", "").replace("]", "").lower()
+                clean = response.replace(tag, "").strip()
+                break
 
-    for tag in ["[ACTION:CREDIT]", "[ACTION:BALANCE]", "[ACTION:PORTFOLIO]",
-                "[ACTION:COLLECTIONS]", "[ACTION:REWARDS]", "[ACTION:MENU]",
-                "[ACTION:CART]"]:
-        if tag in response:
-            action = tag.replace("[ACTION:", "").replace("]", "").lower()
-            clean = response.replace(tag, "").strip()
-            break
+    # Aggressively clean any remaining action tag artifacts
+    clean = re.sub(r'\[ACTION:[^\]]*\]', '', clean).strip()
+    # Remove "action:", "Action:", etc. that LLM might leak
+    clean = re.sub(r'(?i)\baction:\s*\w+', '', clean).strip()
+    # Remove empty lines left over
+    clean = re.sub(r'\n{3,}', '\n\n', clean).strip()
 
     return action, clean, extra

@@ -137,6 +137,38 @@ async def checkout(data: dict):
     return {"status": "ok", "proactive_triggered": triggered}
 
 
+@router.get("/cart-data")
+async def get_cart_data(telegram_user_id: str = ""):
+    """Get cart data for Mini App checkout page."""
+    try:
+        uid = int(telegram_user_id)
+        from bot.services.session import get_session
+        session = get_session(uid)
+        cart = session.get("cart", [])
+        name = session.get("name", "User")
+        email = session.get("email", "")
+        total = sum(i["price"] * i["qty"] for i in cart)
+        return {"cart": cart, "total": total, "name": name, "email": email}
+    except Exception:
+        return {"cart": [], "total": 0, "name": "", "email": ""}
+
+
+@router.post("/checkout-complete")
+async def checkout_complete(telegram_user_id: str = "", total: float = 0):
+    """Called by Mini App after checkout."""
+    _login_store[f"checkout_{telegram_user_id}"] = {"done": True, "total": total}
+    return {"status": "ok"}
+
+
+@router.get("/checkout-status")
+async def checkout_status(telegram_user_id: str = ""):
+    """Polled by bot for checkout completion."""
+    data = _login_store.pop(f"checkout_{telegram_user_id}", None)
+    if data:
+        return {"done": True, "total": data["total"]}
+    return {"done": False}
+
+
 @router.post("/submit-transaction")
 async def submit_transaction(data: dict):
     """Called by transaction web page."""

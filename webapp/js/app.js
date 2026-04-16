@@ -11,6 +11,7 @@ let openedForLogin = window.location.hash.includes('login') ||
                      window.location.href.includes('#login') ||
                      window.location.search.includes('mode=login');
 let openedForForm = window.location.search.includes('mode=form');
+let openedForCheckout = window.location.search.includes('mode=checkout');
 
 const OFFERS = [
   { tag:'Best Match', name:'PayPal Pay Later', amt:'$2,500', score:96, detail:'0% APR · 6 months · No annual fee' },
@@ -567,6 +568,82 @@ async function submitForm() {
   await runScoring();
 }
 
+// ── Shop Checkout (Mini App) ──
+async function showShopCheckout() {
+  const tgUserId = tg?.initDataUnsafe?.user?.id || 'unknown';
+  let cartData = {cart: [], total: 0, name: 'User'};
+
+  try {
+    const resp = await fetch(`${API}/cart-data?telegram_user_id=${tgUserId}`);
+    cartData = await resp.json();
+  } catch(e) {}
+
+  const cart = cartData.cart || [];
+  const total = cartData.total || 0;
+  const name = cartData.name || 'User';
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:100;overflow-y:auto';
+  overlay.innerHTML = `
+    <div style="background:linear-gradient(135deg,#002991,#005bbb);padding:24px;text-align:center;color:white">
+      <div style="font-size:2rem;margin-bottom:8px">💳</div>
+      <div style="font-size:18px;font-weight:800">Checkout</div>
+      <div style="font-size:13px;opacity:0.7">Pay with PayPal</div>
+    </div>
+    <div style="padding:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Order Summary</div>
+      ${cart.map(i => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:1.5rem">${i.icon || '📦'}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${i.name}</div>
+            <div style="font-size:11px;color:var(--dim)">${i.color || ''} · ${i.size || ''} · Qty: ${i.qty}</div>
+          </div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">$${i.price * i.qty}</div>
+        </div>
+      `).join('')}
+      <div style="display:flex;justify-content:space-between;padding:14px 0;font-size:18px;font-weight:800;border-top:2px solid var(--border);margin-top:8px">
+        <span>Total</span><span style="color:var(--blue)">$${total}</span>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:16px 0 10px">Payment</div>
+      <div style="padding:14px;border:2px solid var(--blue);border-radius:10px;background:rgba(96,205,255,0.05);display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">🅿️</span>
+        <div><div style="font-size:14px;font-weight:600">PayPal</div><div style="font-size:11px;color:var(--dim)">Paying as ${name}</div></div>
+        <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--blue);background:rgba(96,205,255,0.15);padding:3px 8px;border-radius:20px">Connected</span>
+      </div>
+
+      <button id="shopPayBtn" onclick="processShopPayment(${total})" style="width:100%;padding:14px;margin-top:16px;border:none;border-radius:10px;background:var(--blue);color:#000;font-size:15px;font-weight:800;cursor:pointer">Place Order — $${total}</button>
+    </div>
+  `;
+  document.getElementById('app').appendChild(overlay);
+}
+
+async function processShopPayment(total) {
+  const btn = document.getElementById('shopPayBtn');
+  btn.textContent = 'Processing...';
+  btn.style.opacity = '0.6';
+  btn.disabled = true;
+
+  const tgUserId = tg?.initDataUnsafe?.user?.id || 'unknown';
+  try {
+    await fetch(`${API}/checkout-complete?telegram_user_id=${tgUserId}&total=${total}`, {method: 'POST'});
+  } catch(e) {}
+
+  await sleep(1500);
+  btn.textContent = '✓ Payment Successful!';
+  btn.style.background = '#00a884';
+
+  await sleep(800);
+  if (tg) try { tg.close(); } catch(e) {}
+
+  // Fallback
+  await sleep(1000);
+  btn.textContent = 'Close this window to return to chat';
+  btn.style.background = 'rgba(96,205,255,0.2)';
+  btn.style.color = 'var(--blue)';
+}
+
 // ── Auto-start ──
 window.addEventListener('load', () => {
   if (openedForLogin) {
@@ -574,6 +651,12 @@ window.addEventListener('load', () => {
     document.querySelector('.chat-bg').style.display = 'none';
     document.querySelector('.chat-inp').style.display = 'none';
     $('loginOverlay').classList.add('show');
+  } else if (openedForCheckout) {
+    // Opened from bot for shopping checkout
+    document.querySelector('.chat-hd').style.display = 'none';
+    document.querySelector('.chat-bg').style.display = 'none';
+    document.querySelector('.chat-inp').style.display = 'none';
+    showShopCheckout();
   } else if (openedForForm) {
     // Opened from bot chat for form only
     document.querySelector('.chat-hd').style.display = 'none';
