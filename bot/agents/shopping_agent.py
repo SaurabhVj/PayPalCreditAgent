@@ -128,12 +128,28 @@ class ShoppingAgent:
                     else:
                         response.message = f"🔍 No products found for '{query}'. Try something else."
                 else:
-                    # show_cart, manage_wishlist, manage_subscriptions
                     response.tool_action = {"name": tool_name, "args": tool_call.get("args", {})}
             else:
-                response.message = llm_message or "🛍 What would you like to shop for? Tell me a product name or category."
+                # LLM didn't call a tool — check if it should have (safety net)
+                action = self._detect_action(message)
+                if action:
+                    response.tool_action = {"name": action, "args": {}}
+                else:
+                    response.message = llm_message or "🛍 What would you like to shop for? Tell me a product name or category."
 
         return response
+
+    @staticmethod
+    def _detect_action(message: str) -> str | None:
+        """Fallback: detect tool from message when LLM fails to call one."""
+        msg = message.lower()
+        if "wishlist" in msg or "wish list" in msg or "saved item" in msg:
+            return "manage_wishlist"
+        if "subscription" in msg or "subscribe" in msg:
+            return "manage_subscriptions"
+        if "cart" in msg:
+            return "show_cart"
+        return None
 
     async def _expand_query(self, query: str) -> str:
         """Ask LLM to expand query with synonyms when no results found."""
