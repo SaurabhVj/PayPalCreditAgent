@@ -476,6 +476,27 @@ async def test_orders(uid: int = 12345):
         return {"error": str(e)}
 
 
+@router.post("/outstock")
+@router.get("/outstock")
+async def outstock_product(product_id: str = ""):
+    """Mark a product as out of stock. Hit: /api/outstock?product_id=sb-001"""
+    if not product_id:
+        return {"error": "product_id required"}
+    from bot.services.catalog import get_catalog
+    catalog = get_catalog()
+    product = catalog.get_product(product_id)
+    if not product:
+        return {"error": f"Product '{product_id}' not found"}
+    catalog.update_stock(product_id, False)
+    # Reset wishlist notifications so users can be re-notified on next restock
+    try:
+        from bot.services.database import mark_wishlist_notified
+        # We don't reset here — notified stays TRUE so they don't get spammed
+    except Exception:
+        pass
+    return {"product_id": product_id, "name": product["name"], "in_stock": False}
+
+
 @router.post("/restock")
 @router.get("/restock")
 async def restock_product(product_id: str = ""):
