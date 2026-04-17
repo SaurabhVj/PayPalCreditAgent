@@ -476,6 +476,14 @@ async def test_orders(uid: int = 12345):
         return {"error": str(e)}
 
 
+@router.get("/test-classify")
+async def test_classify(msg: str = "show me my subscriptions"):
+    """Test the classifier. Hit: /api/test-classify?msg=show+me+my+subscriptions"""
+    from bot.services.llm_service import classify_intent
+    result = await classify_intent(msg, [])
+    return {"message": msg, "classification": result}
+
+
 @router.post("/outstock")
 @router.get("/outstock")
 async def outstock_product(product_id: str = ""):
