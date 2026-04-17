@@ -86,6 +86,39 @@ async def test_llm(q: str = "recommend a travel card"):
     return {"query": q, "intent": intent, "response": resp}
 
 
+@router.get("/test-search")
+async def test_search(q: str = "airpods"):
+    """Full search pipeline test — broad search + rerank."""
+    from bot.services.catalog import get_catalog
+    from bot.services.llm_service import rerank_products
+    import logging
+    logger = logging.getLogger(__name__)
+
+    cat = get_catalog()
+    candidates = cat.search(q)
+    candidate_names = [f"{p['id']}:{p['name']}" for p in candidates]
+
+    reranked_ids = []
+    if len(candidates) > 1:
+        summary = cat.get_candidates_summary(candidates)
+        reranked_ids = await rerank_products(q, summary)
+
+    reranked_names = []
+    for pid in reranked_ids:
+        p = cat.get_product(pid)
+        if p:
+            reranked_names.append(f"{pid}:{p['name']}")
+
+    return {
+        "query": q,
+        "broad_search": candidate_names,
+        "broad_count": len(candidates),
+        "reranked_ids": reranked_ids,
+        "reranked_names": reranked_names,
+        "reranked_count": len(reranked_ids),
+    }
+
+
 @router.post("/form-complete")
 async def form_complete(telegram_user_id: str = "", name: str = "", pan: str = ""):
     """Called by Mini App after form submission."""
