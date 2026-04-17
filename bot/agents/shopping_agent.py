@@ -147,10 +147,13 @@ class ShoppingAgent:
         if len(candidates) > 1:
             summary = catalog.get_candidates_summary(candidates)
             rerank_query = original_message if original_message else query
+            logger.info(f"Reranking {len(candidates)} candidates for '{rerank_query}'")
             selected_ids = await llm_service.rerank_products(rerank_query, summary)
+            logger.info(f"Reranker returned: {selected_ids}")
             if selected_ids:
                 id_to_product = {p["id"]: p for p in candidates}
                 reranked = [id_to_product[pid] for pid in selected_ids if pid in id_to_product]
+                logger.info(f"Reranked to {len(reranked)} products")
                 if reranked:
                     candidates = reranked
 
