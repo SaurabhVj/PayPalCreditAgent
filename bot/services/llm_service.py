@@ -71,20 +71,15 @@ async def call_agent(system_prompt: str, tools: list[dict], messages: list[dict]
         result = await _call_cerebras(system_prompt, tools, messages)
         if result:
             return result
+        logger.warning("Cerebras failed for agent call")
 
-    # Groq fallback
+    # Groq fallback — ONLY use 70b (8b hallucinates with tool calling)
     if GROQ_API_KEY:
-        result = await _call_groq(system_prompt, tools, messages)
+        result = await _call_groq_70b_only(system_prompt, tools, messages)
         if result:
             return result
 
-    # Gemini text-only fallback
-    if GEMINI_API_KEY:
-        result = await _call_gemini_text(system_prompt, messages)
-        if result:
-            return {"message": result, "tool_call": None}
-
-    return {"message": None, "tool_call": None}
+    return {"message": "Sorry, I'm having trouble right now. Please try again.", "tool_call": None}
 
 
 async def general_response(message: str, history: list[dict], user_name: str = "") -> str:
@@ -285,13 +280,50 @@ async def _call_cerebras(system_prompt: str, tools: list[dict], messages: list[d
                         func_args = {}
                     tool_call = {"name": tc["function"]["name"], "args": func_args}
 
-                logger.info(f"Cerebras agent call OK (tool={tool_call['name'] if tool_call else 'none'})")
+                logger.info(f"Cerebras agent OK (tool={tool_call['name'] if tool_call else 'none'}, text={bool(text)})")
                 return {"message": text.strip() if text else None, "tool_call": tool_call}
             else:
-                logger.warning(f"Cerebras {resp.status_code}: {resp.text[:100]}")
+                logger.error(f"Cerebras FAILED {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
-        logger.error(f"Cerebras error: {e}")
+        logger.error(f"Cerebras ERROR: {e}")
 
+    return None
+
+
+async def _call_groq_70b_only(system_prompt: str, tools: list[dict], messages: list[dict]) -> dict | None:
+    """Call Groq with ONLY 70b — 8b hallucinates on tool calling."""
+    all_messages = [{"role": "system", "content": system_prompt}] + messages
+    body = {"model": "llama-3.3-70b-versatile", "messages": all_messages, "temperature": 0.7, "max_tokens": 500}
+    if tools:
+        body["tools"] = tools
+        body["tool_choice"] = "auto"
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json=body,
+            )
+            if resp.status_code == 200:
+                msg = resp.json()["choices"][0]["message"]
+                text = msg.get("content") or ""
+                tool_call = None
+                if msg.get("tool_calls"):
+                    tc = msg["tool_calls"][0]
+                    raw_args = tc["function"].get("arguments", "{}")
+                    try:
+                        func_args = json.loads(raw_args) if raw_args and raw_args != "null" else {}
+                    except (json.JSONDecodeError, TypeError):
+                        func_args = {}
+                    if not isinstance(func_args, dict):
+                        func_args = {}
+                    tool_call = {"name": tc["function"]["name"], "args": func_args}
+                logger.info(f"Groq 70b fallback OK")
+                return {"message": text.strip() if text else None, "tool_call": tool_call}
+            else:
+                logger.warning(f"Groq 70b {resp.status_code}")
+    except Exception as e:
+        logger.error(f"Groq 70b error: {e}")
     return None
 
 
