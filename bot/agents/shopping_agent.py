@@ -89,13 +89,13 @@ class ShoppingAgent:
 
         # Quick keyword checks for direct actions (no LLM needed)
         msg_lower = message.lower().strip()
-        if any(w in msg_lower for w in ["my cart", "show cart", "view cart"]):
+        if any(w in msg_lower for w in ["cart"]):
             response.tool_action = {"name": "show_cart", "args": {}}
             return response
-        if any(w in msg_lower for w in ["my wishlist", "manage wishlist", "view wishlist", "show wishlist"]):
+        if any(w in msg_lower for w in ["wishlist", "wish list", "saved item"]):
             response.tool_action = {"name": "manage_wishlist", "args": {}}
             return response
-        if any(w in msg_lower for w in ["manage subscription", "my subscription", "view subscription", "show subscription"]):
+        if any(w in msg_lower for w in ["subscription", "subscribe"]):
             response.tool_action = {"name": "manage_subscriptions", "args": {}}
             return response
 
