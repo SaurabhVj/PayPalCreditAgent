@@ -810,33 +810,41 @@ async def _show_post_purchase_intelligence(query, user_id: int, card_used: str):
             savings = tip_data["potential_savings"]
             products = tip_data["products"]
 
-            # Generate human-readable tip via LLM
-            from bot.services.llm_service import credit_enrichment
-            from bot.models.cards import RECOMMENDABLE_CARDS, get_card_by_name
-            paid_card = get_card_by_name(card_used) or {}
-            paid_rewards = ", ".join(f"{k}: {v}" for k, v in paid_card.get("rewards", {}).items()) if paid_card else card_used
-            paid_with_detail = f"{card_used} ({paid_rewards})" if paid_rewards else card_used
+            # Try LLM for a human-readable tip, fallback to structured data
+            tip_text = None
+            try:
+                from bot.services.llm_service import credit_enrichment
+                from bot.models.cards import RECOMMENDABLE_CARDS, get_card_by_name
+                paid_card = get_card_by_name(card_used) or {}
+                paid_rewards = ", ".join(f"{k}: {v}" for k, v in paid_card.get("rewards", {}).items()) if paid_card else card_used
+                paid_with_detail = f"{card_used} ({paid_rewards})" if paid_rewards else card_used
+                rec_portfolio = [{"card_id": c["id"]} for c in RECOMMENDABLE_CARDS]
+                llm_tip = await credit_enrichment(products, rec_portfolio, paid_with=paid_with_detail)
+                if llm_tip and len(llm_tip) > 10 and "NONE" not in llm_tip.upper():
+                    tip_text = llm_tip
+            except Exception:
+                pass
 
-            rec_portfolio = [{"card_id": c["id"]} for c in RECOMMENDABLE_CARDS]
-            tip = await credit_enrichment(products, rec_portfolio, paid_with=paid_with_detail)
+            # Fallback: generate tip from structured intelligence data
+            if not tip_text:
+                card_benefit = best_card.get("special", "") or ", ".join(f"{k}: {v}" for k, v in best_card.get("rewards", {}).items())
+                tip_text = f"💡 With *{best_card['name']}*, you could save *${savings:.2f}* on this purchase. {card_benefit}"
 
-            if tip and len(tip) > 10 and "NONE" not in tip.upper():
-                # Apply button for the recommended card
-                pattern_map = {
-                    "paypal_credit": "electronics", "venmo_visa": "travel",
-                    "debit_mc": "groceries", "venmo_teen": "school",
-                }
-                pattern = pattern_map.get(best_card["id"], "travel")
-                buttons = [
-                    [InlineKeyboardButton(f"✅ Apply for {best_card['name']}", callback_data=f"proactive:apply:{pattern}")],
-                    [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
-                ]
-                await query.message.reply_text(
-                    f"💡 *Smart Savings Tip*\n\n{tip}\n\n_Potential savings: ${savings}/purchase_",
-                    parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup(buttons),
-                )
-                _log.info(f"Post-purchase tip shown: {best_card['name']} saves ${savings}")
+            pattern_map = {
+                "paypal_credit": "electronics", "venmo_visa": "travel",
+                "debit_mc": "groceries", "venmo_teen": "school",
+            }
+            pattern = pattern_map.get(best_card["id"], "travel")
+            buttons = [
+                [InlineKeyboardButton(f"✅ Apply for {best_card['name']}", callback_data=f"proactive:apply:{pattern}")],
+                [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
+            ]
+            await query.message.reply_text(
+                f"*Smart Savings Tip*\n\n{tip_text}",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+            _log.info(f"Post-purchase tip shown: {best_card['name']} saves ${savings}")
     except Exception as e:
         _log.error(f"Post-purchase card tip failed: {e}")
 
