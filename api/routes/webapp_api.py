@@ -484,6 +484,21 @@ async def test_classify(msg: str = "show me my subscriptions"):
     return {"message": msg, "classification": result}
 
 
+@router.get("/test-agent")
+async def test_agent(msg: str = "manage my subscriptions", agent: str = "shopping"):
+    """Test what the Shopping/Credit agent LLM returns for a message.
+    Hit: /api/test-agent?msg=manage+my+subscriptions&agent=shopping
+    """
+    from bot.services.llm_service import call_agent
+    if agent == "shopping":
+        from bot.agents.shopping_agent import SYSTEM_PROMPT, TOOLS
+    else:
+        from bot.agents.credit_agent import SYSTEM_PROMPT, TOOLS
+    messages = [{"role": "user", "content": msg}]
+    result = await call_agent(SYSTEM_PROMPT, TOOLS, messages)
+    return {"message": msg, "agent": agent, "llm_message": result.get("message"), "tool_call": result.get("tool_call")}
+
+
 @router.post("/outstock")
 @router.get("/outstock")
 async def outstock_product(product_id: str = ""):
