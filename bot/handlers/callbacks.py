@@ -291,18 +291,13 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         from bot.services.catalog import get_catalog
         p = get_catalog().get_product(product_id)
         name = p["name"] if p else "Item"
-        # Store in session
-        session = get_session(user_id)
-        if "wishlist" not in session:
-            session["wishlist"] = []
-        if product_id not in [w["product_id"] for w in session["wishlist"]]:
-            session["wishlist"].append({"product_id": product_id, "name": name})
         # Store in DB
         try:
             from bot.services.database import add_to_wishlist
-            asyncio.create_task(add_to_wishlist(user_id, product_id, name))
-        except Exception:
-            pass
+            await add_to_wishlist(user_id, product_id, name)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Wishlist add failed: {e}")
         _track(user_id, f"Added {name} to wishlist (out of stock)")
         await query.message.reply_text(
             f"💜 *{name}* added to your wishlist.\nI'll notify you when it's back in stock!",
