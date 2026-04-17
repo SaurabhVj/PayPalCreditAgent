@@ -117,17 +117,19 @@ def get_card_by_name(name: str) -> dict | None:
 
 
 def get_best_card_for_category(category: str, user_cards: list[dict] | None = None) -> dict | None:
-    """Given a purchase category, which card earns the most?"""
+    """Given a purchase category, which card gives the best benefit?
+    Benefits can be cashback OR financing (0% APR) — both are valid.
+    Each entry states the exact, truthful benefit."""
     category_map = {
-        "travel": ("venmo_visa", "3% auto top category"),
-        "dining": ("venmo_visa", "3% auto top category"),
-        "groceries": ("debit_mc", "5% chosen category"),
-        "electronics": ("paypal_credit", "0% APR 6 months on $149+"),
-        "baby": ("cashback_mc", "3% via PayPal checkout"),
-        "school": ("venmo_teen", "Supervised teen debit"),
-        "fashion": ("everyday_cash", "2% flat on everything"),
-        "entertainment": ("venmo_visa", "3% auto top category"),
-        "home": ("paypal_credit", "0% APR 6 months on $149+"),
+        "travel": ("venmo_visa", "3% cashback auto-detected on travel"),
+        "dining": ("venmo_visa", "3% cashback auto-detected on dining"),
+        "groceries": ("debit_mc", "5% cashback on chosen monthly category"),
+        "electronics": ("paypal_credit", "0% APR for 6 months on purchases $149+"),
+        "baby": ("cashback_mc", "3% cashback via PayPal checkout"),
+        "school": ("venmo_teen", "Supervised teen debit with parental controls"),
+        "fashion": ("everyday_cash", "2% flat cashback on everything"),
+        "entertainment": ("venmo_visa", "3% cashback auto-detected top category"),
+        "home": ("paypal_credit", "0% APR for 6 months on purchases $149+"),
     }
     result = category_map.get(category)
     if result:

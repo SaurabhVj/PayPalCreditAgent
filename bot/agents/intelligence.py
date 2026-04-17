@@ -112,12 +112,15 @@ async def post_purchase_card_tip(user_id: int, card_used: str) -> dict | None:
     best_card_for_purchase = None
 
     products = []
+    breakdown = []  # Detailed per-item breakdown for user display
     for o in recent:
         category = o.get("category", "general")
         price = float(o.get("price", 0))
-        products.append({"name": o.get("product_name", ""), "price": price, "category": category})
+        product_name = o.get("product_name", "Item")
+        products.append({"name": product_name, "price": price, "category": category})
 
         # Current cashback with the card they used
+        current_rate = 0.0
         if used_card_id:
             current_rate = _estimate_cashback_rate(used_card_id, category)
             total_current_cashback += price * current_rate
@@ -133,29 +136,59 @@ async def post_purchase_card_tip(user_id: int, card_used: str) -> dict | None:
             if best_id not in owned_ids and best_id != used_card_id:
                 best_card_for_purchase = best
 
-    savings = round(total_best_cashback - total_current_cashback, 2)
+            breakdown.append({
+                "product": product_name,
+                "price": price,
+                "category": category,
+                "current_card": card_used,
+                "current_rate": f"{current_rate * 100:.1f}%",
+                "current_cashback": round(price * current_rate, 2),
+                "best_card": best.get("name", ""),
+                "best_card_id": best_id,
+                "best_rate": f"{best_rate * 100:.1f}%",
+                "best_cashback": round(price * best_rate, 2),
+                "best_benefit": best.get("reason", ""),
+            })
 
-    # Special case: PayPal Credit — savings is about 0% APR, not cashback
+    cashback_savings = round(total_best_cashback - total_current_cashback, 2)
+
+    # Check for financing benefit (PayPal Credit 0% APR) — separate from cashback
+    financing_tip = None
     for o in recent:
-        if float(o.get("price", 0)) >= 149:
-            if "paypal_credit" not in owned_ids:
-                pc = get_best_card_for_category("electronics")
-                if pc and pc["id"] == "paypal_credit":
-                    best_card_for_purchase = pc
-                    savings = round(float(o.get("price", 0)) * 0.20 / 2, 2)  # Estimate interest saved
-                    break
+        price = float(o.get("price", 0))
+        if price >= 149 and "paypal_credit" not in owned_ids:
+            financing_tip = {
+                "card": get_best_card_for_category("electronics"),
+                "product": o.get("product_name", "Item"),
+                "price": price,
+                "benefit": f"0% APR for 6 months on ${price:.0f} — pay ${price / 6:.2f}/month with no interest",
+            }
+            break
 
-    if not best_card_for_purchase or savings < 0.50:
+    # Decide: recommend cashback card, financing card, or nothing
+    if best_card_for_purchase and cashback_savings > 0.50:
+        # Genuine cashback improvement
+        return {
+            "products": products,
+            "best_card": best_card_for_purchase,
+            "card_used": card_used,
+            "benefit_type": "cashback",
+            "cashback_savings": cashback_savings,
+            "breakdown": breakdown,
+            "financing_tip": financing_tip,
+        }
+    elif financing_tip and financing_tip["card"]:
+        # No better cashback card, but financing available
+        return {
+            "products": products,
+            "best_card": financing_tip["card"],
+            "card_used": card_used,
+            "benefit_type": "financing",
+            "financing_detail": financing_tip,
+            "breakdown": breakdown,
+        }
+    else:
         return None
-
-    logger.info(f"Post-purchase tip: {best_card_for_purchase['name']} saves ${savings} vs {card_used}")
-
-    return {
-        "products": products,
-        "best_card": best_card_for_purchase,
-        "card_used": card_used,
-        "potential_savings": savings,
-    }
 
 
 async def detect_subscription_candidates(user_id: int) -> list[dict]:

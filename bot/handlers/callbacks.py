@@ -807,28 +807,39 @@ async def _show_post_purchase_intelligence(query, user_id: int, card_used: str):
 
         if tip_data:
             best_card = tip_data["best_card"]
-            savings = tip_data["potential_savings"]
-            products = tip_data["products"]
+            benefit_type = tip_data.get("benefit_type", "cashback")
+            breakdown = tip_data.get("breakdown", [])
 
-            # Try LLM for a human-readable tip, fallback to structured data
-            tip_text = None
-            try:
-                from bot.services.llm_service import credit_enrichment
-                from bot.models.cards import RECOMMENDABLE_CARDS, get_card_by_name
-                paid_card = get_card_by_name(card_used) or {}
-                paid_rewards = ", ".join(f"{k}: {v}" for k, v in paid_card.get("rewards", {}).items()) if paid_card else card_used
-                paid_with_detail = f"{card_used} ({paid_rewards})" if paid_rewards else card_used
-                rec_portfolio = [{"card_id": c["id"]} for c in RECOMMENDABLE_CARDS]
-                llm_tip = await credit_enrichment(products, rec_portfolio, paid_with=paid_with_detail)
-                if llm_tip and len(llm_tip) > 10 and "NONE" not in llm_tip.upper():
-                    tip_text = llm_tip
-            except Exception:
-                pass
+            # Build truthful breakdown message
+            lines = ["💡 *Smart Savings Tip*\n"]
 
-            # Fallback: generate tip from structured intelligence data
-            if not tip_text:
-                card_benefit = best_card.get("special", "") or ", ".join(f"{k}: {v}" for k, v in best_card.get("rewards", {}).items())
-                tip_text = f"💡 With *{best_card['name']}*, you could save *${savings:.2f}* on this purchase. {card_benefit}"
+            if benefit_type == "cashback":
+                cashback_savings = tip_data.get("cashback_savings", 0)
+                lines.append(f"You paid with *{card_used}*. Here's how *{best_card['name']}* compares:\n")
+                for b in breakdown:
+                    if b["best_card_id"] != (tip_data.get("used_card_id") or ""):
+                        lines.append(
+                            f"📦 {b['product']} (${b['price']:.0f})\n"
+                            f"   Now: {b['current_card']} → {b['current_rate']} = *${b['current_cashback']:.2f}* back\n"
+                            f"   With {b['best_card']}: {b['best_rate']} = *${b['best_cashback']:.2f}* back"
+                        )
+                lines.append(f"\n💰 *Extra cashback: ${cashback_savings:.2f}* per purchase like this")
+
+                # Also mention financing if available
+                ft = tip_data.get("financing_tip")
+                if ft:
+                    lines.append(f"\n💳 Also: {ft['benefit']}")
+
+            elif benefit_type == "financing":
+                fd = tip_data.get("financing_detail", {})
+                lines.append(
+                    f"Your *{fd.get('product', 'purchase')}* (${fd.get('price', 0):.0f}) qualifies for:\n\n"
+                    f"💳 *{best_card['name']}*\n"
+                    f"   {fd.get('benefit', '0% APR for 6 months')}\n\n"
+                    f"_You keep your {card_used} cashback on other purchases._"
+                )
+
+            tip_text = "\n".join(lines)
 
             pattern_map = {
                 "paypal_credit": "electronics", "venmo_visa": "travel",
@@ -840,11 +851,16 @@ async def _show_post_purchase_intelligence(query, user_id: int, card_used: str):
                 [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
             ]
             await query.message.reply_text(
-                f"*Smart Savings Tip*\n\n{tip_text}",
+                tip_text,
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup(buttons),
             )
-            _log.info(f"Post-purchase tip shown: {best_card['name']} saves ${savings}")
+
+            # Store tip in conversation history so user can ask follow-up questions
+            from bot.services.session import add_message
+            add_message(user_id, "assistant", tip_text)
+
+            _log.info(f"Post-purchase tip shown: {best_card['name']} ({benefit_type})")
     except Exception as e:
         _log.error(f"Post-purchase card tip failed: {e}")
 
