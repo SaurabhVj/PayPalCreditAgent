@@ -816,20 +816,53 @@ async def _poll_checkout_complete(query, user_id: int):
                     from bot.agents.shopping_agent import clear_cart
                     from bot.services.session import get_session
                     session = get_session(user_id)
+                    cart = session.get("cart", [])
+                    cart_before_clear = list(cart)
                     name = session.get("name", "User")
                     total = data.get("total", 0)
+
+                    # Save orders to DB
+                    for item in cart:
+                        try:
+                            from bot.services.database import add_order
+                            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), "PayPal Cashback Mastercard")
+                        except Exception:
+                            pass
+
                     clear_cart(user_id)
 
                     await query.message.reply_text(
                         f"🎉 *Order Confirmed!*\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"💰 Amount: *${total}*\n"
-                        f"💳 Paid via: PayPal\n"
+                        f"💳 Paid via: PayPal Cashback Mastercard\n"
                         f"👤 Buyer: {name}\n"
                         f"🚚 Estimated delivery: 3-5 business days\n\n"
                         f"Thank you for your purchase! 🛍",
                         parse_mode="Markdown",
                     )
+
+                    # Post-purchase Smart Savings Tip
+                    if cart_before_clear:
+                        try:
+                            from bot.services.llm_service import credit_enrichment
+                            from bot.models.cards import RECOMMENDABLE_CARDS
+                            products_for_tip = [{"name": i["name"], "price": i["price"], "category": i.get("category", "general")} for i in cart_before_clear]
+                            rec_portfolio = [{"card_id": c["id"], "balance": 0, "credit_limit": 10000} for c in RECOMMENDABLE_CARDS]
+                            tip = await credit_enrichment(products_for_tip, rec_portfolio)
+                            if tip and len(tip) > 10:
+                                await query.message.reply_text(
+                                    f"💡 *Smart Savings Tip*\n\n{tip}",
+                                    parse_mode="Markdown",
+                                    reply_markup=InlineKeyboardMarkup([
+                                        [InlineKeyboardButton("💳 Explore Credit Cards", callback_data="topic:credit_menu")],
+                                        [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
+                                    ]),
+                                )
+                        except Exception as e:
+                            import logging
+                            logging.getLogger(__name__).error(f"Post-purchase tip failed: {e}")
+
                     return
         except Exception:
             pass
