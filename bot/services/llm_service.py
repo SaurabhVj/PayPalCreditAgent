@@ -177,48 +177,71 @@ async def rerank_products(query: str, candidates_summary: str) -> list[str]:
     return []
 
 
-async def credit_enrichment(products: list[dict], user_portfolio: list[dict]) -> str | None:
+async def credit_enrichment(products: list[dict], user_portfolio: list[dict], paid_with: str = "") -> str | None:
     """Ask Credit Agent to suggest best card usage for these products."""
-    if not GROQ_API_KEY or not products:
+    if (not CEREBRAS_API_KEY and not GROQ_API_KEY) or not products:
         return None
 
     products_text = "\n".join(f"- {p.get('name','item')} (${p.get('price',0)}, category: {p.get('category', 'general')})" for p in products)
 
-    # Get full card details for better recommendations
     from bot.models.cards import get_card_by_id
     cards_lines = []
     for c in user_portfolio:
         card_info = get_card_by_id(c.get("card_id", ""))
         if card_info:
             rewards = ", ".join(f"{k}: {v}" for k, v in card_info.get("rewards", {}).items())
-            cards_lines.append(f"- {card_info['name']}: {rewards} | balance ${c.get('balance', 0)}, limit ${c.get('credit_limit', 0)}")
+            cards_lines.append(f"- {card_info['name']}: {rewards} | {card_info.get('special', '')}")
         else:
-            cards_lines.append(f"- {c.get('card_id', 'unknown')}: balance ${c.get('balance', 0)}, limit ${c.get('credit_limit', 0)}")
+            cards_lines.append(f"- {c.get('card_id', 'unknown')}")
     cards_text = "\n".join(cards_lines)
 
+    if paid_with:
+        # Post-purchase: only recommend if there's a REAL saving difference
+        system_msg = (
+            "You are a PayPal credit advisor. The user already paid with a specific card. "
+            "Check if any OTHER card would have given SIGNIFICANTLY better rewards. "
+            "Only recommend if the difference is meaningful — different reward type (e.g. 0% APR vs cashback) or higher percentage. "
+            "If the other cards offer the SAME or similar cashback percentage, return EMPTY string — no recommendation needed. "
+            "If recommending, explain the specific difference in ONE sentence with dollar amounts."
+        )
+        user_msg = f"Products purchased:\n{products_text}\n\nPaid with: {paid_with}\n\nOther cards available:\n{cards_text}\n\nRecommendation (empty if no significant difference):"
+    else:
+        # Pre-checkout: suggest best card
+        system_msg = (
+            "You are a PayPal credit advisor. Suggest the BEST card to use for this purchase in ONE sentence. "
+            "Focus on concrete savings: cashback %, 0% APR, or specific dollar amounts."
+        )
+        user_msg = f"Products:\n{products_text}\n\nAvailable cards:\n{cards_text}\n\nBest card:"
+
     messages = [
-        {"role": "system", "content": (
-            "You are a PayPal credit advisor. Given products a user is buying and their card portfolio with reward details, "
-            "suggest the BEST card to use and why, in ONE short sentence. "
-            "Focus on concrete savings: cashback %, 0% APR, or specific dollar amounts. "
-            "Example: 'Use PayPal Cashback Mastercard for 3% cashback ($5.10 back) on this purchase via PayPal checkout.'"
-        )},
-        {"role": "user", "content": f"Products being purchased:\n{products_text}\n\nUser's available cards:\n{cards_text}\n\nBest card recommendation:"},
+        {"role": "system", "content": system_msg},
+        {"role": "user", "content": user_msg},
     ]
 
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "messages": messages, "temperature": 0.3, "max_tokens": 100},
-            )
-            if resp.status_code == 200:
-                tip = resp.json()["choices"][0]["message"]["content"].strip()
-                if tip and len(tip) > 5:
+    for api_url, api_key, model in [
+        ("https://api.cerebras.ai/v1/chat/completions", CEREBRAS_API_KEY, "llama3.1-8b"),
+        ("https://api.groq.com/openai/v1/chat/completions", GROQ_API_KEY, "llama-3.1-8b-instant"),
+    ]:
+        if not api_key:
+            continue
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    api_url,
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={"model": model, "messages": messages, "temperature": 0.3, "max_tokens": 150},
+                )
+                if resp.status_code == 200:
+                    tip = resp.json()["choices"][0]["message"]["content"].strip()
+                    # Return empty if LLM says no recommendation needed
+                    if not tip or len(tip) < 10 or tip.lower() in ("", "none", "no recommendation", "empty"):
+                        return None
                     return f"💡 {tip}"
-    except Exception as e:
-        logger.error(f"Credit enrichment error: {e}")
+                else:
+                    continue
+        except Exception as e:
+            logger.error(f"Credit enrichment error ({model}): {e}")
+            continue
 
     return None
 

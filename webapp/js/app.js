@@ -618,7 +618,7 @@ async function showShopCheckout() {
     cardRecs = await recResp.json();
   } catch(e) {}
 
-  let selectedCard = cardRecs.user_cards?.[0]?.name || 'PayPal';
+  selectedPaymentCard = cardRecs.user_cards?.[0]?.name || 'PayPal';
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:100;overflow-y:auto';
@@ -674,7 +674,10 @@ async function showShopCheckout() {
   document.getElementById('app').appendChild(overlay);
 }
 
+let selectedPaymentCard = '';
+
 function selectCheckoutCard(el, cardName) {
+  selectedPaymentCard = cardName;
   document.querySelectorAll('.checkout-card-option').forEach(c => {
     c.style.borderColor = 'var(--border)';
     c.style.background = 'transparent';
@@ -697,7 +700,7 @@ async function processShopPayment(total) {
 
   // Notify backend
   try {
-    await fetch(`${API}/checkout-complete?telegram_user_id=${tgUserId}&total=${total}`, {method: 'POST'});
+    await fetch(`${API}/checkout-complete?telegram_user_id=${tgUserId}&total=${total}&card_used=${encodeURIComponent(selectedPaymentCard)}`, {method: 'POST'});
     console.log('Checkout complete sent for uid:', tgUserId);
   } catch(e) {
     console.error('Checkout notify failed:', e);

@@ -196,9 +196,9 @@ async def card_recommendations(total: float = 0, category: str = "general"):
 
 
 @router.post("/checkout-complete")
-async def checkout_complete(telegram_user_id: str = "", total: float = 0):
+async def checkout_complete(telegram_user_id: str = "", total: float = 0, card_used: str = ""):
     """Called by Mini App after checkout."""
-    _login_store[f"checkout_{telegram_user_id}"] = {"done": True, "total": total}
+    _login_store[f"checkout_{telegram_user_id}"] = {"done": True, "total": total, "card_used": card_used}
     return {"status": "ok"}
 
 
@@ -207,7 +207,7 @@ async def checkout_status(telegram_user_id: str = ""):
     """Polled by bot for checkout completion."""
     data = _login_store.pop(f"checkout_{telegram_user_id}", None)
     if data:
-        return {"done": True, "total": data["total"]}
+        return {"done": True, "total": data["total"], "card_used": data.get("card_used", "")}
     return {"done": False}
 
 

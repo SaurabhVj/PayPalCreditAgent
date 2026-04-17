@@ -820,12 +820,13 @@ async def _poll_checkout_complete(query, user_id: int):
                     cart_before_clear = list(cart)
                     name = session.get("name", "User")
                     total = data.get("total", 0)
+                    card_used = data.get("card_used", "PayPal")
 
                     # Save orders to DB
                     for item in cart:
                         try:
                             from bot.services.database import add_order
-                            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), "PayPal Cashback Mastercard")
+                            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), card_used)
                         except Exception:
                             pass
 
@@ -835,24 +836,30 @@ async def _poll_checkout_complete(query, user_id: int):
                         f"🎉 *Order Confirmed!*\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"💰 Amount: *${total}*\n"
-                        f"💳 Paid via: PayPal Cashback Mastercard\n"
+                        f"💳 Paid via: {card_used}\n"
                         f"👤 Buyer: {name}\n"
                         f"🚚 Estimated delivery: 3-5 business days\n\n"
                         f"Thank you for your purchase! 🛍",
                         parse_mode="Markdown",
                     )
 
-                    # Post-purchase Smart Savings Tip
+                    # Post-purchase Smart Savings Tip — only if a better card exists
                     if cart_before_clear:
                         try:
                             from bot.services.llm_service import credit_enrichment
                             from bot.models.cards import RECOMMENDABLE_CARDS
                             products_for_tip = [{"name": i["name"], "price": i["price"], "category": i.get("category", "general")} for i in cart_before_clear]
+                            # Get card rewards detail for what user paid with
+                            from bot.models.cards import get_card_by_id
+                            paid_card_info = get_card_by_id(card_used) or {}
+                            paid_rewards = ", ".join(f"{k}: {v}" for k, v in paid_card_info.get("rewards", {}).items()) if paid_card_info else card_used
+                            paid_with_detail = f"{card_used} ({paid_rewards})" if paid_rewards else card_used
+
                             rec_portfolio = [{"card_id": c["id"], "balance": 0, "credit_limit": 10000} for c in RECOMMENDABLE_CARDS]
-                            tip = await credit_enrichment(products_for_tip, rec_portfolio)
+                            tip = await credit_enrichment(products_for_tip, rec_portfolio, paid_with=paid_with_detail)
                             if tip and len(tip) > 10:
                                 await query.message.reply_text(
-                                    f"💡 *Smart Savings Tip*\n\n{tip}",
+                                    f"*Smart Savings Tip*\n\n{tip}",
                                     parse_mode="Markdown",
                                     reply_markup=InlineKeyboardMarkup([
                                         [InlineKeyboardButton("💳 Explore Credit Cards", callback_data="topic:credit_menu")],
