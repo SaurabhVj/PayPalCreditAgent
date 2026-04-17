@@ -23,8 +23,8 @@ Given the user's message and conversation history, respond with a JSON object:
 {{"intent": "...", "query": "..." or null}}
 
 INTENTS:
-- "shopping" — user wants to find, buy, browse products, shop more, show more, cart, checkout
-- "credit" — user asks about credit cards, balance, payments, portfolio, collections, rewards, apply, savings tips
+- "shopping" — user wants to find, buy, browse products, shop more, show more, cart, checkout, wishlist, subscriptions, manage subscriptions, manage wishlist
+- "credit" — user asks about credit cards, balance, payments, portfolio, collections, rewards, apply, savings tips, how to save money with cards
 - "menu" — user greets (hi, hello, hey) or explicitly asks what the bot can do, help, menu
 - "general" — general conversation, thanks, compliments, or anything else
 

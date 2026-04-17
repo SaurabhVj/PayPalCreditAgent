@@ -303,7 +303,63 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             asyncio.create_task(add_to_wishlist(user_id, product_id, name))
         except Exception:
             pass
-        await query.message.reply_text(f"💜 *{name}* added to your wishlist.\nI'll notify you when it's back in stock!", parse_mode="Markdown")
+        _track(user_id, f"Added {name} to wishlist (out of stock)")
+        await query.message.reply_text(
+            f"💜 *{name}* added to your wishlist.\nI'll notify you when it's back in stock!",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📋 View Wishlist", callback_data="wishlist:manage")],
+                [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
+            ]),
+        )
+
+    elif data == "wishlist:manage":
+        try:
+            from bot.services.database import get_wishlist
+            items = await get_wishlist(user_id)
+            if not items:
+                await query.message.reply_text("💜 Your wishlist is empty.")
+                return
+            lines = ["💜 *Your Wishlist*\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"]
+            buttons = []
+            from bot.services.catalog import get_catalog
+            catalog = get_catalog()
+            for item in items:
+                pid = item["product_id"]
+                pname = item["product_name"]
+                p = catalog.get_product(pid)
+                stock = "✅ In Stock" if (p and p.get("in_stock")) else "❌ Out of Stock"
+                notified = " (notified)" if item.get("notified") else ""
+                lines.append(f"📦 *{pname}*\n   {stock}{notified}\n")
+                row = [InlineKeyboardButton(f"🗑 Remove {pname[:15]}", callback_data=f"wishlist:remove:{pid}")]
+                if p and p.get("in_stock"):
+                    row.insert(0, InlineKeyboardButton(f"🛒 Add to Cart", callback_data=f"shop:add:{pid}"))
+                buttons.append(row)
+            await query.message.reply_text(
+                "\n".join(lines),
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Manage wishlist failed: {e}")
+            await query.message.reply_text("Couldn't load wishlist. Try again later.")
+
+    elif data.startswith("wishlist:remove:"):
+        product_id = data.split(":", 2)[2]
+        try:
+            from bot.services.database import remove_from_wishlist
+            await remove_from_wishlist(user_id, product_id)
+            await query.message.reply_text(
+                "✅ Removed from wishlist.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📋 View Wishlist", callback_data="wishlist:manage")],
+                ]),
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Remove from wishlist failed: {e}")
+            await query.message.reply_text("Couldn't remove item. Try again later.")
 
     elif data.startswith("subscribe:setup:"):
         # subscribe:setup:{product_id}:{frequency}

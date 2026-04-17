@@ -34,6 +34,10 @@ async def main():
         except Exception as e:
             logger.warning(f"Database init failed (continuing without DB): {e}")
 
+    # Store bot reference for proactive messaging (restock notifications etc.)
+    from bot.services.bot_ref import set_bot
+    set_bot(bot_app.bot)
+
     await bot_app.updater.start_polling(
         drop_pending_updates=True,
         allowed_updates=["message", "callback_query"],

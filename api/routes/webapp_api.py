@@ -474,3 +474,80 @@ async def test_orders(uid: int = 12345):
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+@router.post("/restock")
+@router.get("/restock")
+async def restock_product(product_id: str = ""):
+    """Mark a product as back in stock and notify all wishlisted users.
+    Hit: POST /api/restock?product_id=sb-001
+    """
+    if not product_id:
+        return {"error": "product_id required"}
+
+    import logging
+    log = logging.getLogger("restock")
+    results = {"product_id": product_id, "notifications_sent": 0, "users_notified": []}
+
+    # 1. Update catalog stock
+    try:
+        from bot.services.catalog import get_catalog
+        catalog = get_catalog()
+        product = catalog.get_product(product_id)
+        if not product:
+            return {"error": f"Product '{product_id}' not found in catalog"}
+        catalog.update_stock(product_id, True)
+        results["product_name"] = product["name"]
+        results["stock_updated"] = True
+    except Exception as e:
+        return {"error": f"Failed to update stock: {e}"}
+
+    # 2. Find wishlisted users
+    try:
+        from bot.services.database import get_wishlist_users_for_product, mark_wishlist_notified
+        users = await get_wishlist_users_for_product(product_id)
+        results["wishlisted_users"] = len(users)
+    except Exception as e:
+        log.error(f"Failed to query wishlist: {e}")
+        return {**results, "error": f"Stock updated but wishlist query failed: {e}"}
+
+    if not users:
+        return {**results, "message": "Stock updated. No users to notify."}
+
+    # 3. Send notifications
+    from bot.services.bot_ref import get_bot
+    bot = get_bot()
+    if not bot:
+        return {**results, "error": "Stock updated but bot not available for notifications"}
+
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    for user in users:
+        try:
+            tid = user["telegram_id"]
+            pname = user["product_name"]
+            await bot.send_message(
+                chat_id=tid,
+                text=(
+                    f"🔔 *Back in Stock!*\n\n"
+                    f"Great news! *{pname}* is available again.\n"
+                    f"Grab it before it sells out!"
+                ),
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton(f"🛒 Add to Cart", callback_data=f"shop:add:{product_id}")],
+                    [InlineKeyboardButton(f"🗑 Remove from Wishlist", callback_data=f"wishlist:remove:{product_id}")],
+                ]),
+            )
+            results["notifications_sent"] += 1
+            results["users_notified"].append(tid)
+            log.info(f"Notified user {tid} about restock: {pname}")
+        except Exception as e:
+            log.error(f"Failed to notify user {user['telegram_id']}: {e}")
+
+    # 4. Mark as notified
+    try:
+        await mark_wishlist_notified(product_id)
+    except Exception as e:
+        log.error(f"Failed to mark notified: {e}")
+
+    return results

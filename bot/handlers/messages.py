@@ -255,6 +255,35 @@ async def _execute_tool(update: Update, user_id: int, tool: dict, session: dict)
             logger.error(f"Subscription analysis failed: {e}")
             await update.message.reply_text("Couldn't analyze subscriptions right now. Try again later.")
 
+    elif name == "manage_wishlist":
+        try:
+            from bot.services.database import get_wishlist
+            from bot.services.catalog import get_catalog
+            items = await get_wishlist(user_id)
+            if not items:
+                await update.message.reply_text("💜 Your wishlist is empty. Add out-of-stock items to get notified when they're back!")
+                return
+            catalog = get_catalog()
+            lines = ["💜 *Your Wishlist*\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"]
+            buttons = []
+            for item in items:
+                pid = item["product_id"]
+                pname = item["product_name"]
+                p = catalog.get_product(pid)
+                stock = "✅ In Stock" if (p and p.get("in_stock")) else "❌ Out of Stock"
+                lines.append(f"📦 *{pname}*\n   {stock}\n")
+                row = [InlineKeyboardButton(f"🗑 Remove {pname[:15]}", callback_data=f"wishlist:remove:{pid}")]
+                if p and p.get("in_stock"):
+                    row.insert(0, InlineKeyboardButton(f"🛒 Add to Cart", callback_data=f"shop:add:{pid}"))
+                buttons.append(row)
+            await update.message.reply_text(
+                "\n".join(lines), parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+        except Exception as e:
+            logger.error(f"Manage wishlist failed: {e}")
+            await update.message.reply_text("Couldn't load wishlist. Try again later.")
+
 
 async def _poll_login_from_text(update: Update, user_id: int):
     """Background poll for login completion — triggered from free-text credit flow."""

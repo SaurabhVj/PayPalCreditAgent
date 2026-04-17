@@ -38,6 +38,22 @@ TOOLS = [
             "parameters": {"type": "object", "properties": {}}
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_wishlist",
+            "description": "Show and manage wishlist items. Use when user asks about wishlist, saved items, or 'what did I save'.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_subscriptions",
+            "description": "Show and manage active subscriptions. Use when user asks to see, modify, cancel, or manage their subscriptions.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
 ]
 
 

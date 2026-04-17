@@ -27,7 +27,6 @@ Available cards to recommend:
 
 Additional capabilities:
 - analyze_spend: analyze user's actual spending patterns from order history and recommend card optimizations
-- analyze_subscriptions: check for repeat purchases that could become auto-delivery subscriptions
 
 Be concise and helpful. If user asks a general credit question, answer directly without calling a tool."""
 
@@ -85,22 +84,6 @@ TOOLS = [
         "function": {
             "name": "analyze_spend",
             "description": "Analyze user's actual spending patterns from order history. Shows which cards to use for which categories, potential savings, and cards to apply for. Use when user asks about optimizing spending, best card usage, or 'how should I use my cards'.",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "analyze_subscriptions",
-            "description": "Check order history for repeat purchases that could become subscriptions. Use when user asks about subscriptions, auto-delivery, or 'what should I subscribe to'.",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "manage_subscriptions",
-            "description": "Show and manage active subscriptions. Use when user asks to see, modify, cancel, or manage their subscriptions.",
             "parameters": {"type": "object", "properties": {}}
         }
     },

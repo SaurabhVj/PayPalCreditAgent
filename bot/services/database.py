@@ -282,6 +282,21 @@ async def remove_from_wishlist(telegram_id: int, product_id: str):
         await conn.execute("DELETE FROM wishlist WHERE telegram_id = $1 AND product_id = $2", telegram_id, product_id)
 
 
+async def get_wishlist_users_for_product(product_id: str) -> list[dict]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT telegram_id, product_name FROM wishlist WHERE product_id = $1 AND notified = FALSE",
+            product_id)
+        return [dict(r) for r in rows]
+
+
+async def mark_wishlist_notified(product_id: str):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE wishlist SET notified = TRUE WHERE product_id = $1", product_id)
+
+
 # ── Messages (conversation history) ──
 
 async def add_message(telegram_id: int, role: str, content: str):
