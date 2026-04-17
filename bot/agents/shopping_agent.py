@@ -9,29 +9,25 @@ from bot.services.session import get_session
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a PayPal Shopping Assistant. You help users find and buy products.
+SYSTEM_PROMPT = """You are a PayPal Shopping Assistant. Help users find and buy products.
 
-You have these tools:
-- search_products: search for products. Use when user asks for a SPECIFIC product or product type (e.g. "Nike Jordan shoes", "headphones", "baby diapers"). Do NOT use when user says only a brand name without product type.
-- show_cart: show the user's shopping cart
-
-Key behaviors:
-- If user says only a brand name (e.g. "Nike", "Apple") without specifying what type of product → ask "What type of Nike product are you looking for — shoes, clothing, or accessories?"
-- If user says "show more" or "more options" → look at conversation history for the previous search, and search with a broader query
-- When user asks about a product, be helpful and specific
-
-Be concise and natural."""
+Rules:
+1. When user asks for ANY product — call search_products immediately. Examples: "airpods", "Nike shoes", "headphones", "Nike tshirt", "baby diapers", "show all apple products"
+2. ONLY ask a clarifying question when user says JUST a single brand word with nothing else. Example: just "Nike" alone or just "Apple" alone.
+3. "show more", "show all", "what else" → call search_products with broader query from conversation history
+4. NEVER ask a question AND call search_products at the same time. Do one or the other.
+5. Be concise."""
 
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "search_products",
-            "description": "Search for products to buy. Use when user mentions a product TYPE (shoes, headphones, diapers, laptop). Extract the search query.",
+            "description": "Search for products. Use for ANY product request — brand+product, product name, category, 'show more', 'show all'. Only skip if user says a single brand word alone.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Product search query, e.g. 'Nike Jordan shoes', 'headphones', 'baby diapers'"}
+                    "query": {"type": "string", "description": "Search query — extract the product name/type from user message"}
                 },
                 "required": ["query"]
             }
@@ -41,7 +37,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "show_cart",
-            "description": "Show the user's shopping cart contents.",
+            "description": "Show shopping cart.",
             "parameters": {"type": "object", "properties": {}}
         }
     },
@@ -147,8 +143,8 @@ class ShoppingAgent:
         if not candidates:
             return []
 
-        # Step 2: LLM reranking
-        if len(candidates) > 4:
+        # Step 2: LLM reranking — always rerank if more than 1 candidate
+        if len(candidates) > 1:
             summary = catalog.get_candidates_summary(candidates)
             rerank_query = original_message if original_message else query
             selected_ids = await llm_service.rerank_products(rerank_query, summary)
