@@ -885,13 +885,33 @@ async def _poll_checkout_complete(query, user_id: int):
                     total = data.get("total", 0)
                     card_used = data.get("card_used", "PayPal")
 
-                    # Save orders to DB
-                    for item in cart:
+                    import logging
+                    _log = logging.getLogger(__name__)
+                    _log.info(f"Checkout complete: user={user_id}, total={total}, card={card_used}, cart_items={len(cart)}")
+
+                    # Save orders to DB — from session cart or DB cart
+                    order_items = cart
+                    if not order_items:
+                        # Session cart empty (Mini App flow) — try DB cart
                         try:
-                            from bot.services.database import add_order
-                            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), card_used)
+                            from bot.services.database import get_cart as db_get_cart
+                            order_items = await db_get_cart(user_id)
+                            _log.info(f"Session cart empty, DB cart has {len(order_items)} items")
                         except Exception:
                             pass
+
+                    if not order_items and total:
+                        # Both empty — save a generic order from checkout data
+                        order_items = [{"product_id": "", "name": "Purchase", "price": float(total), "category": "general"}]
+                        _log.info(f"No cart data, saving generic order for ${total}")
+
+                    for item in order_items:
+                        try:
+                            from bot.services.database import add_order
+                            price = float(item.get("price", 0))
+                            await add_order(user_id, item.get("product_id", ""), item.get("product_name", item.get("name", "Item")), price, item.get("category", "general"), card_used)
+                        except Exception as e:
+                            _log.error(f"Failed to save order: {e}")
 
                     clear_cart(user_id)
 
@@ -906,7 +926,7 @@ async def _poll_checkout_complete(query, user_id: int):
                         parse_mode="Markdown",
                     )
 
-                    # Post-purchase Smart Savings Tip — from DB order data
+                    # Post-purchase intelligence — from DB order data
                     await _show_post_purchase_intelligence(query, user_id, card_used)
 
                     return

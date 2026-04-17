@@ -359,3 +359,118 @@ async def get_transactions_for_user(username: str = ""):
     data = load_transactions()
     user_data = data.get(username.lower(), {})
     return user_data.get("transactions", [])
+
+
+# ── Debug / Test endpoints ──
+
+@router.get("/test-flow")
+async def test_full_flow(uid: int = 12345):
+    """Simulate full post-purchase flow: add order → card tip → subscription check.
+    Hit: /api/test-flow?uid=12345
+    """
+    import logging
+    log = logging.getLogger("test-flow")
+    results = {"steps": []}
+
+    # Step 1: Save a test order to DB
+    try:
+        from bot.services.database import add_order, get_orders
+        await add_order(uid, "sb-007", "Apple AirPods Pro 2", 249.0, "electronics", "PayPal Cashback Mastercard")
+        results["steps"].append({"step": "1_save_order", "status": "ok"})
+    except Exception as e:
+        results["steps"].append({"step": "1_save_order", "status": "error", "detail": str(e)})
+        return results
+
+    # Step 2: Read orders back from DB
+    try:
+        orders = await get_orders(uid, limit=5)
+        results["steps"].append({
+            "step": "2_read_orders",
+            "status": "ok",
+            "count": len(orders),
+            "latest": {"name": orders[0].get("product_name"), "price": float(orders[0].get("price", 0)), "category": orders[0].get("category"), "card": orders[0].get("card_used")} if orders else None,
+        })
+    except Exception as e:
+        results["steps"].append({"step": "2_read_orders", "status": "error", "detail": str(e)})
+        return results
+
+    # Step 3: Post-purchase card tip
+    try:
+        from bot.agents.intelligence import post_purchase_card_tip
+        tip_data = await post_purchase_card_tip(uid, "PayPal Cashback Mastercard")
+        if tip_data:
+            results["steps"].append({
+                "step": "3_card_tip",
+                "status": "ok",
+                "best_card": tip_data["best_card"]["name"],
+                "savings": tip_data["potential_savings"],
+                "products": tip_data["products"],
+            })
+        else:
+            results["steps"].append({"step": "3_card_tip", "status": "ok", "result": "no_better_card"})
+    except Exception as e:
+        results["steps"].append({"step": "3_card_tip", "status": "error", "detail": str(e)})
+
+    # Step 4: LLM enrichment (generate human-readable tip)
+    if any(s["step"] == "3_card_tip" and s.get("best_card") for s in results["steps"]):
+        try:
+            from bot.services.llm_service import credit_enrichment
+            from bot.models.cards import RECOMMENDABLE_CARDS
+            tip_step = next(s for s in results["steps"] if s["step"] == "3_card_tip")
+            rec_portfolio = [{"card_id": c["id"]} for c in RECOMMENDABLE_CARDS]
+            tip_text = await credit_enrichment(
+                tip_step["products"], rec_portfolio,
+                paid_with="PayPal Cashback Mastercard (paypal_purchases: 3% cashback, everything_else: 1.5% cashback)"
+            )
+            results["steps"].append({"step": "4_llm_tip", "status": "ok", "tip": tip_text})
+        except Exception as e:
+            results["steps"].append({"step": "4_llm_tip", "status": "error", "detail": str(e)})
+
+    # Step 5: Subscription detection
+    try:
+        from bot.agents.intelligence import detect_subscription_candidates
+        candidates = await detect_subscription_candidates(uid)
+        results["steps"].append({
+            "step": "5_subscription_check",
+            "status": "ok",
+            "candidates": [{"name": c["product_name"], "times": c["times_bought"], "freq": c["suggested_frequency"]} for c in candidates],
+        })
+    except Exception as e:
+        results["steps"].append({"step": "5_subscription_check", "status": "error", "detail": str(e)})
+
+    # Step 6: Spend analysis
+    try:
+        from bot.agents.intelligence import analyze_spend_patterns
+        analysis = await analyze_spend_patterns(uid)
+        results["steps"].append({
+            "step": "6_spend_analysis",
+            "status": "ok",
+            "total_spend": analysis.get("total_spend"),
+            "total_orders": analysis.get("total_orders"),
+            "top_categories": analysis.get("top_categories", [])[:3],
+            "cards_to_recommend": analysis.get("cards_to_recommend", []),
+        })
+    except Exception as e:
+        results["steps"].append({"step": "6_spend_analysis", "status": "error", "detail": str(e)})
+
+    return results
+
+
+@router.get("/test-orders")
+async def test_orders(uid: int = 12345):
+    """Check what orders exist for a user. Hit: /api/test-orders?uid=12345"""
+    try:
+        from bot.services.database import get_orders
+        orders = await get_orders(uid, limit=20)
+        return {
+            "user_id": uid,
+            "count": len(orders),
+            "orders": [
+                {"id": o.get("id"), "product": o.get("product_name"), "price": float(o.get("price", 0)),
+                 "category": o.get("category"), "card": o.get("card_used"),
+                 "date": str(o.get("created_at", ""))}
+                for o in orders
+            ],
+        }
+    except Exception as e:
+        return {"error": str(e)}
