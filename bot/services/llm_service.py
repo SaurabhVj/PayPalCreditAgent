@@ -3,7 +3,7 @@
 import json
 import logging
 import httpx
-from bot.config import GROQ_API_KEY, GEMINI_API_KEY
+from bot.config import GROQ_API_KEY, GEMINI_API_KEY, CEREBRAS_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -66,11 +66,19 @@ async def call_agent(system_prompt: str, tools: list[dict], messages: list[dict]
     """Call LLM with agent-specific prompt and tools.
     Returns {"message": str|None, "tool_call": {"name": str, "args": dict}|None}"""
 
+    # Cerebras first (best function calling, 1M tokens/day)
+    if CEREBRAS_API_KEY:
+        result = await _call_cerebras(system_prompt, tools, messages)
+        if result:
+            return result
+
+    # Groq fallback
     if GROQ_API_KEY:
         result = await _call_groq(system_prompt, tools, messages)
         if result:
             return result
 
+    # Gemini text-only fallback
     if GEMINI_API_KEY:
         result = await _call_gemini_text(system_prompt, messages)
         if result:
@@ -91,26 +99,31 @@ You help with shopping and credit cards but right now just have a natural conver
             msgs.append({"role": m["role"] if m["role"] == "user" else "assistant", "content": m["content"]})
     msgs.append({"role": "user", "content": message})
 
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "messages": msgs, "temperature": 0.7, "max_tokens": 300},
-            )
-            if resp.status_code == 200:
-                return resp.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        logger.error(f"General response error: {e}")
+    # Try Cerebras first, then Groq
+    for api_url, api_key, model in [
+        ("https://api.cerebras.ai/v1/chat/completions", CEREBRAS_API_KEY, "qwen-3-235b-a22b-instruct-2507"),
+        ("https://api.groq.com/openai/v1/chat/completions", GROQ_API_KEY, "llama-3.1-8b-instant"),
+    ]:
+        if not api_key:
+            continue
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    api_url,
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={"model": model, "messages": msgs, "temperature": 0.7, "max_tokens": 300},
+                )
+                if resp.status_code == 200:
+                    return resp.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            logger.error(f"General response error ({model}): {e}")
+            continue
 
     return None
 
 
 async def rerank_products(query: str, candidates_summary: str) -> list[str]:
     """Ask LLM to pick the most relevant product IDs from candidates."""
-    if not GROQ_API_KEY:
-        return []
-
     messages = [
         {"role": "system", "content": (
             "You are a product search relevance engine. "
@@ -124,32 +137,42 @@ async def rerank_products(query: str, candidates_summary: str) -> list[str]:
         {"role": "user", "content": f"Query: {query}\n\nCandidates:\n{candidates_summary}\n\nReturn JSON array of matching product IDs:"},
     ]
 
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": messages,
-                    "temperature": 0,
-                    "max_tokens": 100,
-                    "response_format": {"type": "json_object"},
-                },
-            )
-            if resp.status_code == 200:
-                content = resp.json()["choices"][0]["message"]["content"]
-                parsed = json.loads(content)
-                if isinstance(parsed, list):
-                    ids = parsed
-                elif isinstance(parsed, dict):
-                    ids = parsed.get("ids", parsed.get("product_ids", parsed.get("results", [])))
+    providers = [
+        ("https://api.cerebras.ai/v1/chat/completions", CEREBRAS_API_KEY, "llama3.1-8b"),
+        ("https://api.groq.com/openai/v1/chat/completions", GROQ_API_KEY, "llama-3.1-8b-instant"),
+    ]
+
+    for api_url, api_key, model in providers:
+        if not api_key:
+            continue
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    api_url,
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={"model": model, "messages": messages, "temperature": 0, "max_tokens": 100},
+                )
+                if resp.status_code == 200:
+                    content = resp.json()["choices"][0]["message"]["content"]
+                    try:
+                        parsed = json.loads(content)
+                    except json.JSONDecodeError:
+                        import re
+                        match = re.search(r'\[.*?\]', content, re.DOTALL)
+                        parsed = json.loads(match.group()) if match else []
+                    if isinstance(parsed, list):
+                        ids = parsed
+                    elif isinstance(parsed, dict):
+                        ids = parsed.get("ids", parsed.get("product_ids", parsed.get("results", [])))
+                    else:
+                        ids = []
+                    logger.info(f"Reranked ({model}): {len(ids)} products selected")
+                    return [str(i) for i in ids][:4]
                 else:
-                    ids = []
-                logger.info(f"Reranked: {len(ids)} products selected")
-                return [str(i) for i in ids][:4]
-    except Exception as e:
-        logger.error(f"Reranking error: {e}")
+                    continue
+        except Exception as e:
+            logger.error(f"Reranking error ({model}): {e}")
+            continue
 
     return []
 
@@ -201,6 +224,53 @@ async def credit_enrichment(products: list[dict], user_portfolio: list[dict]) ->
 
 
 # ── Internal helpers ──
+
+async def _call_cerebras(system_prompt: str, tools: list[dict], messages: list[dict]) -> dict | None:
+    """Call Cerebras API — best function calling quality."""
+    all_messages = [{"role": "system", "content": system_prompt}] + messages
+
+    body = {
+        "model": "qwen-3-235b-a22b-instruct-2507",
+        "messages": all_messages,
+        "temperature": 0.7,
+        "max_tokens": 500,
+    }
+    if tools:
+        body["tools"] = tools
+        body["tool_choice"] = "auto"
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                "https://api.cerebras.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {CEREBRAS_API_KEY}", "Content-Type": "application/json"},
+                json=body,
+            )
+            if resp.status_code == 200:
+                msg = resp.json()["choices"][0]["message"]
+                text = msg.get("content") or ""
+                tool_call = None
+
+                if msg.get("tool_calls"):
+                    tc = msg["tool_calls"][0]
+                    raw_args = tc["function"].get("arguments", "{}")
+                    try:
+                        func_args = json.loads(raw_args) if raw_args and raw_args != "null" else {}
+                    except (json.JSONDecodeError, TypeError):
+                        func_args = {}
+                    if not isinstance(func_args, dict):
+                        func_args = {}
+                    tool_call = {"name": tc["function"]["name"], "args": func_args}
+
+                logger.info(f"Cerebras agent call OK (tool={tool_call['name'] if tool_call else 'none'})")
+                return {"message": text.strip() if text else None, "tool_call": tool_call}
+            else:
+                logger.warning(f"Cerebras {resp.status_code}: {resp.text[:100]}")
+    except Exception as e:
+        logger.error(f"Cerebras error: {e}")
+
+    return None
+
 
 async def _call_groq(system_prompt: str, tools: list[dict], messages: list[dict]) -> dict | None:
     """Call Groq with function calling. Uses 8b (500K tokens/day) with 70b fallback."""
