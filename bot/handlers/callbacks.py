@@ -24,6 +24,12 @@ from bot.utils.formatters import (
 )
 
 
+def _track(user_id: int, text: str):
+    """Store bot action in conversation history so LLM has full context."""
+    from bot.services.session import add_message
+    add_message(user_id, "assistant", text)
+
+
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -202,6 +208,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         product_id = data.split(":", 2)[2]
         from bot.agents.shopping_agent import add_to_cart, get_cart_message
         result = add_to_cart(product_id, user_id)
+        _track(user_id, result)
         await query.message.reply_text(result, parse_mode="Markdown")
         msg, kb = get_cart_message(user_id)
         await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
@@ -210,6 +217,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         product_id = data.split(":", 2)[2]
         from bot.agents.shopping_agent import remove_from_cart, get_cart_message
         remove_from_cart(product_id, user_id)
+        _track(user_id, "Removed item from cart")
         msg, kb = get_cart_message(user_id)
         await query.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
 
@@ -775,6 +783,9 @@ async def _handle_shop_pay(query, user_id: int):
 
     clear_cart(user_id)
 
+    order_msg = f"Order confirmed: {items_summary} for ${total}, paid with {card_used}"
+    _track(user_id, order_msg)
+
     await query.message.reply_text(
         f"🎉 *Order Confirmed!*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -938,6 +949,8 @@ async def _poll_checkout_complete(query, user_id: int):
                             _log.error(f"Failed to save order: {e}")
 
                     clear_cart(user_id)
+
+                    _track(user_id, f"Order confirmed: ${total} paid with {card_used}")
 
                     await query.message.reply_text(
                         f"🎉 *Order Confirmed!*\n"

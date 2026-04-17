@@ -11,13 +11,9 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are a PayPal Shopping Assistant. Help users find and buy products.
 
-CRITICAL RULES:
-1. ALWAYS call search_products for ANY product request. Examples: "earphones", "airpods", "Nike shoes", "headphones", "laptop", "baby diapers", "coffee machine"
-2. You MUST use search_products — NEVER list, suggest, or describe products yourself. You do NOT know what products are available. Only search_products knows the catalog.
-3. ONLY ask a clarifying question when user says JUST a single brand word alone (e.g. just "Nike" or just "Apple" with nothing else).
-4. "show more", "show all", "what else" → call search_products with broader query from conversation history.
-5. NEVER respond with product names or prices in your text. The search tool handles all product display.
-6. Be concise. Do not add any product information in your text response."""
+You will be told whether to search or ask a question. Follow that instruction.
+NEVER make up product names or prices. You don't know the catalog.
+Be concise and helpful."""
 
 TOOLS = [
     {
@@ -47,67 +43,64 @@ TOOLS = [
 
 class ShoppingAgent:
     async def handle(self, message: str, user_id: int,
-                     history: list[dict], session: dict) -> OrchestratorResult:
-        """Handle shopping-related intent."""
-
-        messages = []
-        if history:
-            for m in history[-10:]:
-                messages.append({
-                    "role": m["role"] if m["role"] == "user" else "assistant",
-                    "content": m["content"],
-                })
-        messages.append({"role": "user", "content": message})
-
-        result = await llm_service.call_agent(SYSTEM_PROMPT, TOOLS, messages)
-
-        llm_message = result.get("message")
-        tool_call = result.get("tool_call")
+                     history: list[dict], session: dict,
+                     search_query: str | None = None) -> OrchestratorResult:
+        """Handle shopping-related intent.
+        search_query comes from the classifier — if set, search immediately.
+        If None, the user was vague and needs a clarifying question."""
 
         response = OrchestratorResult(intent="shopping")
 
-        if tool_call and tool_call["name"] == "search_products":
-            query = tool_call["args"].get("query", message)
-            # Search with original query first
-            products = await self._search_and_rerank(query, user_id, original_message=message)
+        # Check for cart-related keywords
+        msg_lower = message.lower().strip()
+        if any(w in msg_lower for w in ["cart", "my cart", "show cart", "view cart"]):
+            response.tool_action = {"name": "show_cart", "args": {}}
+            return response
 
-            # If no results, ask LLM to expand with synonyms and retry
+        if search_query:
+            # Classifier extracted a specific query — search directly
+            logger.info(f"Shopping search (from classifier): '{search_query}'")
+            products = await self._search_and_rerank(search_query, user_id, original_message=message)
+
+            # If no results, expand with synonyms and retry
             if not products:
-                expanded = await self._expand_query(query)
-                if expanded and expanded != query:
+                expanded = await self._expand_query(search_query)
+                if expanded and expanded != search_query:
                     products = await self._search_and_rerank(expanded, user_id, original_message=message)
 
             if products:
-                if llm_message:
-                    response.message = llm_message
                 response.products = products
-                # Store what was shown in session for "show more"
-                session["last_search"] = query
+                session["last_search"] = search_query
             else:
-                response.message = "🔍 No products found. Try a different search term."
-
-        elif tool_call and tool_call["name"] == "show_cart":
-            response.tool_action = {"name": "show_cart", "args": {}}
-            if llm_message:
-                response.message = llm_message
-
+                response.message = f"🔍 No products found for '{search_query}'. Try a different search term."
         else:
-            # No tool call — LLM decided to respond conversationally.
-            # Safety net: if the message looks like a product query, force a search
-            # to prevent the LLM from hallucinating products in text.
-            forced_products = await self._search_and_rerank(message, user_id, original_message=message)
-            if not forced_products:
-                expanded = await self._expand_query(message)
-                if expanded and expanded != message:
-                    forced_products = await self._search_and_rerank(expanded, user_id, original_message=message)
+            # No specific query — ask clarifying question via LLM
+            messages = []
+            if history:
+                for m in history[-10:]:
+                    messages.append({
+                        "role": m["role"] if m["role"] == "user" else "assistant",
+                        "content": m["content"],
+                    })
+            messages.append({"role": "user", "content": message})
 
-            if forced_products:
-                logger.info(f"Forced search found {len(forced_products)} products (LLM skipped tool)")
-                response.products = forced_products
-                session["last_search"] = message
+            result = await llm_service.call_agent(SYSTEM_PROMPT, TOOLS, messages)
+            llm_message = result.get("message")
+            tool_call = result.get("tool_call")
+
+            # LLM might still decide to search (e.g. from conversation context)
+            if tool_call and tool_call["name"] == "search_products":
+                query = tool_call["args"].get("query", message)
+                products = await self._search_and_rerank(query, user_id, original_message=message)
+                if products:
+                    response.products = products
+                    session["last_search"] = query
+                else:
+                    response.message = f"🔍 No products found for '{query}'. Try something else."
+            elif tool_call and tool_call["name"] == "show_cart":
+                response.tool_action = {"name": "show_cart", "args": {}}
             else:
-                # Genuinely conversational (e.g. "What type of Nike product?")
-                response.message = llm_message or "What are you looking for? I can help you find products."
+                response.message = llm_message or "🛍 What would you like to shop for? Tell me a product name or category."
 
         return response
 

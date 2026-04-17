@@ -8,58 +8,83 @@ from bot.config import GROQ_API_KEY, GEMINI_API_KEY, CEREBRAS_API_KEY
 logger = logging.getLogger(__name__)
 
 
-async def classify_intent(message: str, recent_history: list[dict]) -> str:
-    """Fast intent classification — returns shopping/credit/menu/general.
-    Uses lightweight model for speed."""
+async def classify_intent(message: str, recent_history: list[dict]) -> dict:
+    """Intent classification + search query extraction using Groq 70b.
+    Returns {"intent": "shopping|credit|menu|general", "query": str|None}"""
 
     history_text = ""
     if recent_history:
-        last_5 = recent_history[-5:]
-        history_text = "\n".join(f"{m['role']}: {m['content'][:100]}" for m in last_5)
+        last_10 = recent_history[-10:]
+        history_text = "\n".join(f"{m['role']}: {m['content']}" for m in last_10)
 
     prompt = f"""You are an intent classifier for a PayPal shopping and credit assistant.
 
-Given the user's message and recent conversation history, classify the intent into exactly one category:
+Given the user's message and conversation history, respond with a JSON object:
+{{"intent": "...", "query": "..." or null}}
 
-- "shopping" — user wants to find, buy, browse products, ask about items, show more, what do you have, cart, checkout
-- "credit" — user asks about credit cards, balance, payments, portfolio, collections, rewards, apply for card
+INTENTS:
+- "shopping" — user wants to find, buy, browse products, shop more, show more, cart, checkout
+- "credit" — user asks about credit cards, balance, payments, portfolio, collections, rewards, apply, savings tips
 - "menu" — user greets (hi, hello, hey) or explicitly asks what the bot can do, help, menu
-- "general" — general conversation, questions, thanks, compliments, or anything that doesn't fit above
+- "general" — general conversation, thanks, compliments, or anything else
 
-CRITICAL: Look at the conversation history. If the previous messages were about shopping and user says "show more" or "what else" or "any other" or "what do you have" — that is ALWAYS "shopping", never "menu".
+QUERY (only for shopping intent):
+- If user mentions a specific product or category, extract it: "Nike shoes" → "Nike shoes"
+- If user is vague ("I wanna shop", "show me stuff", "what do you have") → null
+- If user says "show more" or "what else" after shopping → look at history for the last search topic
+
+IMPORTANT: Use conversation history to understand context. If user just completed a purchase and says "I wanna shop more" → intent is "shopping". If user received a savings tip and asks "how?" or "tell me more" → intent is "credit".
 
 Recent conversation:
 {history_text}
 
 User message: {message}
 
-Respond with ONLY one word: shopping, credit, menu, or general"""
+Respond with ONLY the JSON object, nothing else."""
 
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0,
-                    "max_tokens": 5,
-                },
-            )
-            if resp.status_code == 200:
-                text = resp.json()["choices"][0]["message"]["content"].strip().lower()
-                # Extract just the category word
-                for cat in ["shopping", "credit", "menu", "general"]:
-                    if cat in text:
-                        logger.info(f"Classified '{message[:30]}' → {cat}")
-                        return cat
-                logger.warning(f"Classifier returned unexpected: {text}")
-                return "general"
-    except Exception as e:
-        logger.error(f"Classification error: {e}")
+    for model, api_url, api_key in [
+        ("llama-3.3-70b-versatile", "https://api.groq.com/openai/v1/chat/completions", GROQ_API_KEY),
+        ("llama-3.1-8b-instant", "https://api.groq.com/openai/v1/chat/completions", GROQ_API_KEY),
+    ]:
+        if not api_key:
+            continue
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    api_url,
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0,
+                        "max_tokens": 50,
+                    },
+                )
+                if resp.status_code == 200:
+                    text = resp.json()["choices"][0]["message"]["content"].strip()
+                    # Parse JSON response
+                    try:
+                        parsed = json.loads(text)
+                        intent = parsed.get("intent", "general")
+                        query = parsed.get("query")
+                        if intent not in ("shopping", "credit", "menu", "general"):
+                            intent = "general"
+                        logger.info(f"Classified ({model}): '{message[:30]}' → {intent}, query={query}")
+                        return {"intent": intent, "query": query}
+                    except json.JSONDecodeError:
+                        # Fallback: extract intent from text
+                        for cat in ["shopping", "credit", "menu", "general"]:
+                            if cat in text.lower():
+                                logger.info(f"Classified ({model}, text fallback): '{message[:30]}' → {cat}")
+                                return {"intent": cat, "query": None}
+                elif resp.status_code == 429:
+                    logger.warning(f"Classifier {model} rate limited, trying fallback")
+                    continue
+        except Exception as e:
+            logger.error(f"Classification error ({model}): {e}")
+            continue
 
-    return "general"  # Safe fallback
+    return {"intent": "general", "query": None}
 
 
 async def call_agent(system_prompt: str, tools: list[dict], messages: list[dict]) -> dict:

@@ -29,21 +29,20 @@ class Orchestrator:
                       history: list[dict], session: dict) -> OrchestratorResult:
         """Main entry point — classify, route, enrich."""
 
-        # Step 1: Classify intent
-        intent = await llm_service.classify_intent(message, history)
-        logger.info(f"Intent: {intent} for '{message[:40]}'")
+        # Step 1: Classify intent + extract search query
+        classification = await llm_service.classify_intent(message, history)
+        intent = classification["intent"]
+        search_query = classification.get("query")
+        logger.info(f"Intent: {intent}, query: {search_query} for '{message[:40]}'")
 
         # Step 2: Route to agent
         if intent == "menu":
             return OrchestratorResult(intent="menu", show_menu=True)
 
         elif intent == "shopping":
-            result = await self.shopping_agent.handle(message, user_id, history, session)
-
-            # Credit enrichment happens at checkout, not during browsing
-            # User hasn't decided to buy yet — don't suggest cards
-
-            return result
+            return await self.shopping_agent.handle(
+                message, user_id, history, session, search_query=search_query
+            )
 
         elif intent == "credit":
             return await self.credit_agent.handle(message, user_id, history, session)
