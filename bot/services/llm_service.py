@@ -132,8 +132,9 @@ async def rerank_products(query: str, candidates_summary: str) -> list[str]:
         {"role": "user", "content": f"Query: {query}\n\nCandidates:\n{candidates_summary}\n\nReturn JSON array of matching product IDs:"},
     ]
 
+    # Groq 70b first (smartest reranking), 8b fallback
     providers = [
-        ("https://api.cerebras.ai/v1/chat/completions", CEREBRAS_API_KEY, "llama3.1-8b"),
+        ("https://api.groq.com/openai/v1/chat/completions", GROQ_API_KEY, "llama-3.3-70b-versatile"),
         ("https://api.groq.com/openai/v1/chat/completions", GROQ_API_KEY, "llama-3.1-8b-instant"),
     ]
 
