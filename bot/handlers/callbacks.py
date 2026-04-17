@@ -126,7 +126,17 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ── Portfolio actions ──
     elif data == "portfolio:optimize":
-        await query.message.reply_text(portfolio_optimize_message(), parse_mode="Markdown")
+        # Dynamic spend analysis from DB order history
+        try:
+            from bot.agents.intelligence import analyze_spend_patterns
+            from bot.utils.formatters import dynamic_portfolio_optimize_message
+            analysis = await analyze_spend_patterns(user_id)
+            if analysis.get("top_categories"):
+                await query.message.reply_text(dynamic_portfolio_optimize_message(analysis), parse_mode="Markdown")
+            else:
+                await query.message.reply_text(portfolio_optimize_message(), parse_mode="Markdown")
+        except Exception:
+            await query.message.reply_text(portfolio_optimize_message(), parse_mode="Markdown")
 
     elif data == "portfolio:compare":
         await query.message.reply_text(portfolio_compare_message(), parse_mode="Markdown")
@@ -286,6 +296,33 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
         await query.message.reply_text(f"💜 *{name}* added to your wishlist.\nI'll notify you when it's back in stock!", parse_mode="Markdown")
+
+    elif data.startswith("subscribe:setup:"):
+        # subscribe:setup:{product_id}:{frequency}
+        parts = data.split(":")
+        product_id = parts[2] if len(parts) > 2 else ""
+        frequency = parts[3] if len(parts) > 3 else "monthly"
+        try:
+            from bot.services.database import add_subscription
+            from bot.services.catalog import get_catalog
+            p = get_catalog().get_product(product_id)
+            product_name = p["name"] if p else "Product"
+            from datetime import date, timedelta
+            intervals = {"weekly": 7, "biweekly": 14, "monthly": 30}
+            next_delivery = date.today() + timedelta(days=intervals.get(frequency, 30))
+            await add_subscription(user_id, product_id, product_name, frequency, next_delivery)
+            await query.message.reply_text(
+                f"✅ *Subscription Active!*\n\n"
+                f"📦 {product_name}\n"
+                f"🔄 Frequency: {frequency.title()}\n"
+                f"📅 Next delivery: {next_delivery.strftime('%b %d, %Y')}\n\n"
+                f"You can manage subscriptions anytime.",
+                parse_mode="Markdown",
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Subscription setup failed: {e}")
+            await query.message.reply_text("Sorry, couldn't set up subscription. Try again later.")
 
     elif data.startswith("proactive:submit"):
         await _handle_proactive_submit(query, user_id)
@@ -725,14 +762,14 @@ async def _handle_shop_pay(query, user_id: int):
     await query.message.reply_text("💳 _Processing payment via PayPal..._", parse_mode="Markdown")
     await asyncio.sleep(2)
 
-    cart_before_clear = list(cart)  # Save for post-purchase analysis
     items_summary = ", ".join(f"{i['name']}" for i in cart)
+    card_used = "PayPal Cashback Mastercard"
 
     # Save orders to DB
     for item in cart:
         try:
             from bot.services.database import add_order
-            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), "PayPal Cashback Mastercard")
+            await add_order(user_id, item.get("product_id", ""), item["name"], item["price"], item.get("category", ""), card_used)
         except Exception:
             pass
 
@@ -742,7 +779,7 @@ async def _handle_shop_pay(query, user_id: int):
         f"🎉 *Order Confirmed!*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"💰 Amount: *${total}*\n"
-        f"💳 Paid via: PayPal Cashback Mastercard\n"
+        f"💳 Paid via: {card_used}\n"
         f"👤 Buyer: {name}\n"
         f"📦 Items: {items_summary}\n"
         f"🚚 Estimated delivery: 3-5 business days\n\n"
@@ -754,53 +791,80 @@ async def _handle_shop_pay(query, user_id: int):
         ]),
     )
 
-    # Post-purchase proactive — recommend better cards
+    # Post-purchase intelligence — from DB order data
+    await _show_post_purchase_intelligence(query, user_id, card_used)
+
+
+async def _show_post_purchase_intelligence(query, user_id: int, card_used: str):
+    """Post-purchase: card tip + subscription nudge — all from DB data."""
+    import logging
+    _log = logging.getLogger(__name__)
+
+    # 1. Smart Savings Tip — recommend a better card based on order history
     try:
-        from bot.models.cards import RECOMMENDABLE_CARDS, get_card_by_id
-        import httpx
-        from bot.config import GROQ_API_KEY
+        from bot.agents.intelligence import post_purchase_card_tip
+        tip_data = await post_purchase_card_tip(user_id, card_used)
 
-        products_text = "\n".join(f"- {i['name']} (${i['price']}, category: {i.get('category', 'general')})" for i in cart_before_clear)
+        if tip_data:
+            best_card = tip_data["best_card"]
+            savings = tip_data["potential_savings"]
+            products = tip_data["products"]
 
-        # Build detailed info for cards user DOESN'T have
-        rec_lines = []
-        for c in RECOMMENDABLE_CARDS:
-            rewards = ", ".join(f"{k}: {v}" for k, v in c.get("rewards", {}).items())
-            rec_lines.append(f"- {c['name']}: {rewards} | {c.get('special', '')}")
-        recs_text = "\n".join(rec_lines)
+            # Generate human-readable tip via LLM
+            from bot.services.llm_service import credit_enrichment
+            from bot.models.cards import RECOMMENDABLE_CARDS, get_card_by_name
+            paid_card = get_card_by_name(card_used) or {}
+            paid_rewards = ", ".join(f"{k}: {v}" for k, v in paid_card.get("rewards", {}).items()) if paid_card else card_used
+            paid_with_detail = f"{card_used} ({paid_rewards})" if paid_rewards else card_used
 
-        messages = [
-            {"role": "system", "content": (
-                "You are a PayPal credit advisor. The user just bought products using their existing card. "
-                "Check if any card they DON'T have would have given better rewards on this purchase. "
-                "If yes, recommend ONE card with a specific benefit in 2 sentences max. "
-                "Include the exact cashback/savings amount. "
-                "If no card would have been significantly better, say nothing — return empty string."
-            )},
-            {"role": "user", "content": f"Products purchased:\n{products_text}\n\nPaid with: PayPal Cashback Mastercard (3% PayPal, 1.5% other)\n\nCards user could apply for:\n{recs_text}\n\nRecommendation:"},
-        ]
+            rec_portfolio = [{"card_id": c["id"]} for c in RECOMMENDABLE_CARDS]
+            tip = await credit_enrichment(products, rec_portfolio, paid_with=paid_with_detail)
 
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "messages": messages, "temperature": 0.3, "max_tokens": 150},
-            )
-            if resp.status_code == 200:
-                tip = resp.json()["choices"][0]["message"]["content"].strip()
-                if tip and len(tip) > 10:
-                    from bot.utils.keyboards import credit_menu_keyboard
-                    await query.message.reply_text(
-                        f"💡 *Smart Savings Tip*\n\n{tip}",
-                        parse_mode="Markdown",
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("💳 Explore Credit Cards", callback_data="topic:credit_menu")],
-                            [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
-                        ]),
-                    )
+            if tip and len(tip) > 10 and "NONE" not in tip.upper():
+                # Apply button for the recommended card
+                pattern_map = {
+                    "paypal_credit": "electronics", "venmo_visa": "travel",
+                    "debit_mc": "groceries", "venmo_teen": "school",
+                }
+                pattern = pattern_map.get(best_card["id"], "travel")
+                buttons = [
+                    [InlineKeyboardButton(f"✅ Apply for {best_card['name']}", callback_data=f"proactive:apply:{pattern}")],
+                    [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
+                ]
+                await query.message.reply_text(
+                    f"💡 *Smart Savings Tip*\n\n{tip}\n\n_Potential savings: ${savings}/purchase_",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup(buttons),
+                )
+                _log.info(f"Post-purchase tip shown: {best_card['name']} saves ${savings}")
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).debug(f"Post-purchase tip failed: {e}")
+        _log.error(f"Post-purchase card tip failed: {e}")
+
+    # 2. Subscription nudge — if user bought this product before
+    try:
+        from bot.agents.intelligence import detect_subscription_candidates
+        candidates = await detect_subscription_candidates(user_id)
+
+        if candidates:
+            top = candidates[0]
+            if top["times_bought"] >= 2:
+                await query.message.reply_text(
+                    f"🔄 *Subscribe & Save*\n\n"
+                    f"You've bought *{top['product_name']}* {top['times_bought']} times.\n"
+                    f"Set up *{top['suggested_frequency']}* auto-delivery and never run out!\n\n"
+                    f"💰 ${top['price']} per delivery",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton(
+                            f"✅ Subscribe {top['suggested_frequency'].title()}",
+                            callback_data=f"subscribe:setup:{top['product_id']}:{top['suggested_frequency']}"
+                        )],
+                        [InlineKeyboardButton("❌ No thanks", callback_data="shop:back")],
+                    ]),
+                )
+                _log.info(f"Subscription nudge: {top['product_name']} x{top['times_bought']}")
+    except Exception as e:
+        _log.error(f"Subscription detection failed: {e}")
 
 
 async def _poll_checkout_complete(query, user_id: int):
@@ -817,7 +881,6 @@ async def _poll_checkout_complete(query, user_id: int):
                     from bot.services.session import get_session
                     session = get_session(user_id)
                     cart = session.get("cart", [])
-                    cart_before_clear = list(cart)
                     name = session.get("name", "User")
                     total = data.get("total", 0)
                     card_used = data.get("card_used", "PayPal")
@@ -843,52 +906,8 @@ async def _poll_checkout_complete(query, user_id: int):
                         parse_mode="Markdown",
                     )
 
-                    # Post-purchase Smart Savings Tip — only if a better card exists
-                    if cart_before_clear:
-                        try:
-                            from bot.services.llm_service import credit_enrichment
-                            from bot.models.cards import RECOMMENDABLE_CARDS
-                            products_for_tip = [{"name": i["name"], "price": i["price"], "category": i.get("category", "general")} for i in cart_before_clear]
-                            # Get card rewards detail for what user paid with
-                            from bot.models.cards import get_card_by_name
-                            paid_card_info = get_card_by_name(card_used) or {}
-                            paid_rewards = ", ".join(f"{k}: {v}" for k, v in paid_card_info.get("rewards", {}).items()) if paid_card_info else card_used
-                            paid_with_detail = f"{card_used} ({paid_rewards})" if paid_rewards else card_used
-
-                            rec_portfolio = [{"card_id": c["id"], "balance": 0, "credit_limit": 10000} for c in RECOMMENDABLE_CARDS]
-                            tip = await credit_enrichment(products_for_tip, rec_portfolio, paid_with=paid_with_detail)
-                            if tip and len(tip) > 10 and "NONE" not in tip.upper():
-                                # Find the LAST card mentioned in tip — that's the recommended one
-                                apply_buttons = []
-                                matched_card = None
-                                for rc in RECOMMENDABLE_CARDS:
-                                    if rc["name"].lower() in tip.lower():
-                                        matched_card = rc  # Keep overwriting — last match wins
-
-                                if matched_card:
-                                    pattern_map = {
-                                        "paypal_credit": "electronics",
-                                        "venmo_visa": "travel",
-                                        "debit_mc": "groceries",
-                                        "venmo_teen": "school",
-                                    }
-                                    pattern = pattern_map.get(matched_card["id"], "travel")
-                                    apply_buttons.append(
-                                        [InlineKeyboardButton(f"✅ Apply for {matched_card['name']}", callback_data=f"proactive:apply:{pattern}")]
-                                    )
-
-                                if not apply_buttons:
-                                    apply_buttons.append([InlineKeyboardButton("💳 Explore Credit Cards", callback_data="topic:credit_menu")])
-                                apply_buttons.append([InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")])
-
-                                await query.message.reply_text(
-                                    f"*Smart Savings Tip*\n\n{tip}",
-                                    parse_mode="Markdown",
-                                    reply_markup=InlineKeyboardMarkup(apply_buttons),
-                                )
-                        except Exception as e:
-                            import logging
-                            logging.getLogger(__name__).error(f"Post-purchase tip failed: {e}")
+                    # Post-purchase Smart Savings Tip — from DB order data
+                    await _show_post_purchase_intelligence(query, user_id, card_used)
 
                     return
         except Exception:

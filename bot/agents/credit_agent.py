@@ -25,6 +25,10 @@ Available cards to recommend:
 - PayPal Debit Mastercard: 5% on chosen monthly category
 - Venmo Teen Account: supervised debit for ages 13-17
 
+Additional capabilities:
+- analyze_spend: analyze user's actual spending patterns from order history and recommend card optimizations
+- analyze_subscriptions: check for repeat purchases that could become auto-delivery subscriptions
+
 Be concise and helpful. If user asks a general credit question, answer directly without calling a tool."""
 
 TOOLS = [
@@ -73,6 +77,22 @@ TOOLS = [
         "function": {
             "name": "show_credit_menu",
             "description": "Show credit services submenu. Use when user asks generally about credit options.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_spend",
+            "description": "Analyze user's actual spending patterns from order history. Shows which cards to use for which categories, potential savings, and cards to apply for. Use when user asks about optimizing spending, best card usage, or 'how should I use my cards'.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_subscriptions",
+            "description": "Check order history for repeat purchases that could become subscriptions. Use when user asks about subscriptions, auto-delivery, or 'what should I subscribe to'.",
             "parameters": {"type": "object", "properties": {}}
         }
     },

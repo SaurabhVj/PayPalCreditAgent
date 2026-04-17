@@ -279,3 +279,60 @@ def collections_plan_confirmed(plan: str) -> str:
         "Reply 'I need help' if your situation changes.\n\n"
         "Is there anything else I can help with? 💙"
     )
+
+
+def dynamic_portfolio_optimize_message(analysis: dict) -> str:
+    """Format spend analysis from intelligence.analyze_spend_patterns() into markdown."""
+    cats = analysis.get("top_categories", [])
+    recs = analysis.get("cards_to_recommend", [])
+    total = analysis.get("total_spend", 0)
+    order_count = analysis.get("total_orders", 0)
+
+    if not cats:
+        return portfolio_optimize_message()  # Fall back to static tips if no order history
+
+    lines = [
+        f"🔄 *Spend Optimization — Based on Your Orders*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📊 Analyzed: *{order_count} orders* · *${total:,.2f}* total spend\n"
+    ]
+
+    for i, cat in enumerate(cats[:5], 1):
+        icon = "✅" if cat["optimal"] else "⚠️"
+        lines.append(
+            f"\n{icon} *{cat['category'].title()}* — ${cat['spend']:,.2f}\n"
+            f"   Using: {cat['card_used']} ({cat['current_rate']})\n"
+            f"   Best: {cat['best_card']} ({cat['best_rate']})"
+        )
+        if cat["potential_savings"] > 0:
+            lines.append(f"   💰 Could save: *${cat['potential_savings']:.2f}*")
+
+    if recs:
+        lines.append(f"\n━━━━━━━━━━━━━━━━━━━━━━━━━\n🎯 *Cards to Consider*\n")
+        for r in recs:
+            lines.append(
+                f"💳 *{r['card_name']}*\n"
+                f"   Projected savings: *${r['projected_annual_savings']:.2f}*\n"
+                f"   Why: {', '.join(r['reasons'])}"
+            )
+
+    return "\n".join(lines)
+
+
+def subscription_candidates_message(candidates: list[dict]) -> str:
+    """Format subscription candidates from intelligence.detect_subscription_candidates()."""
+    if not candidates:
+        return "📦 No repeat purchases detected yet. Keep shopping and I'll suggest subscriptions when I notice patterns!"
+
+    lines = [
+        "🔄 *Subscribe & Save Suggestions*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "_Based on your purchase history:_\n"
+    ]
+    for c in candidates:
+        lines.append(
+            f"📦 *{c['product_name']}*\n"
+            f"   Bought {c['times_bought']}x · ~every {c['avg_interval_days']} days\n"
+            f"   Suggested: *{c['suggested_frequency'].title()}* · ${c['price']}/delivery\n"
+        )
+    return "\n".join(lines)

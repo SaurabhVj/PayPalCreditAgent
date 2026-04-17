@@ -186,6 +186,45 @@ async def _execute_tool(update: Update, user_id: int, tool: dict, session: dict)
     elif name == "show_rewards":
         await update.message.reply_text(rewards_message(), parse_mode="Markdown")
 
+    elif name == "analyze_spend":
+        try:
+            from bot.agents.intelligence import analyze_spend_patterns
+            from bot.utils.formatters import dynamic_portfolio_optimize_message
+            analysis = await analyze_spend_patterns(user_id)
+            if analysis.get("top_categories"):
+                await update.message.reply_text(
+                    dynamic_portfolio_optimize_message(analysis),
+                    parse_mode="Markdown",
+                    reply_markup=portfolio_keyboard(),
+                )
+            else:
+                await update.message.reply_text(
+                    "📊 No order history yet. Make some purchases and I'll analyze your spending patterns!",
+                    reply_markup=portfolio_keyboard(),
+                )
+        except Exception as e:
+            logger.error(f"Spend analysis failed: {e}")
+            from bot.utils.formatters import portfolio_optimize_message
+            await update.message.reply_text(portfolio_optimize_message(), parse_mode="Markdown")
+
+    elif name == "analyze_subscriptions":
+        try:
+            from bot.agents.intelligence import detect_subscription_candidates
+            from bot.utils.formatters import subscription_candidates_message
+            candidates = await detect_subscription_candidates(user_id)
+            msg = subscription_candidates_message(candidates)
+            buttons = []
+            for c in candidates[:3]:
+                buttons.append([InlineKeyboardButton(
+                    f"✅ Subscribe {c['product_name'][:20]} ({c['suggested_frequency']})",
+                    callback_data=f"subscribe:setup:{c['product_id']}:{c['suggested_frequency']}"
+                )])
+            kb = InlineKeyboardMarkup(buttons) if buttons else None
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=kb)
+        except Exception as e:
+            logger.error(f"Subscription analysis failed: {e}")
+            await update.message.reply_text("Couldn't analyze subscriptions right now. Try again later.")
+
 
 async def _poll_login_from_text(update: Update, user_id: int):
     """Background poll for login completion — triggered from free-text credit flow."""
