@@ -9,9 +9,21 @@ from bot.services.session import get_session
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are a PayPal Shopping Assistant. Help users find and buy products.
+SYSTEM_PROMPT = """You are a PayPal Shopping Assistant. Help users find, buy, and manage products.
 
-You will be told whether to search or ask a question. Follow that instruction.
+You have these tools:
+- search_products: search the product catalog by name, brand, or category
+- show_cart: show the user's shopping cart
+- manage_wishlist: show wishlisted items (out-of-stock products user saved for later)
+- manage_subscriptions: show active auto-delivery subscriptions (modify frequency, cancel)
+
+When to use each:
+- "show my wishlist", "what did I save", "saved items" → manage_wishlist
+- "my subscriptions", "manage subscriptions", "auto-delivery" → manage_subscriptions
+- "suggest subscriptions", "what should I subscribe to" → manage_subscriptions
+- "my cart", "what's in my cart" → show_cart
+- Any product name or category → search_products
+
 NEVER make up product names or prices. You don't know the catalog.
 Be concise and helpful."""
 
@@ -51,6 +63,14 @@ TOOLS = [
         "function": {
             "name": "manage_subscriptions",
             "description": "Show and manage active subscriptions. Use when user asks to see, modify, cancel, or manage their subscriptions.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_subscriptions",
+            "description": "Suggest products to subscribe to based on order history. Use when user asks 'what should I subscribe to', 'suggest subscriptions', or 'recommend products for auto-delivery'.",
             "parameters": {"type": "object", "properties": {}}
         }
     },
