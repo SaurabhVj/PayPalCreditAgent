@@ -68,8 +68,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # 2. Show text message from agent
-    if result.message:
+    # 2. Show text message from agent (skip if products will be shown — cards speak for themselves)
+    if result.message and not result.products:
         await update.message.reply_text(result.message)
         add_message(user_id, "assistant", result.message)
         try:
@@ -80,8 +80,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 3. Show product cards (shopping)
     if result.products:
-        if not result.message:
-            await update.message.reply_text(f"🔍 Found {len(result.products)} result(s):")
+        await update.message.reply_text(f"🔍 Found {len(result.products)} result(s):")
 
         # Store search results in history for context
         shown = ", ".join(f"{c['name']} (${c['price']})" for c in result.products)
@@ -98,14 +97,22 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         reply_markup=card["keyboard"],
                     )
                     sent = True
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Image send failed for {card.get('name', '?')}: {e}")
             if not sent:
-                await update.message.reply_text(
-                    f"{card['icon']} {card['caption']}",
-                    parse_mode="Markdown",
-                    reply_markup=card["keyboard"],
-                )
+                try:
+                    await update.message.reply_text(
+                        f"{card['icon']} {card['caption']}",
+                        parse_mode="Markdown",
+                        reply_markup=card["keyboard"],
+                    )
+                except Exception as e:
+                    # Last resort — send without markdown
+                    logger.warning(f"Card text fallback failed: {e}")
+                    await update.message.reply_text(
+                        f"{card.get('icon', '🛍')} {card.get('name', 'Product')} — ${card.get('price', '?')}",
+                        reply_markup=card.get("keyboard"),
+                    )
 
     # 4. Show credit tip (cross-agent enrichment)
     if result.credit_tip:

@@ -107,6 +107,15 @@ def get_card_by_id(card_id: str) -> dict | None:
     return None
 
 
+def get_card_by_name(name: str) -> dict | None:
+    """Look up card by display name (case-insensitive partial match)."""
+    name_lower = name.lower()
+    for c in PAYPAL_CARDS:
+        if c["name"].lower() == name_lower or name_lower in c["name"].lower():
+            return c
+    return None
+
+
 def get_best_card_for_category(category: str, user_cards: list[dict] | None = None) -> dict | None:
     """Given a purchase category, which card earns the most?"""
     category_map = {

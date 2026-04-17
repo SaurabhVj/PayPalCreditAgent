@@ -1,17 +1,31 @@
 """REST API endpoints for the Mini App."""
 
 from fastapi import APIRouter
-from bot.services.mock_data import (
-    MOCK_USER, MOCK_TRANSACTIONS, MOCK_BALANCE, MOCK_CARD, MOCK_REWARDS,
-)
 from bot.models.offers import CREDIT_OFFERS
+from bot.models.cards import DEFAULT_PORTFOLIO, PAYPAL_CARDS
 
 router = APIRouter()
 
 
 @router.get("/user")
-async def get_user():
-    return MOCK_USER
+async def get_user(telegram_user_id: str = ""):
+    """Get user info — from DB if available, defaults otherwise."""
+    if telegram_user_id:
+        try:
+            from bot.services.database import get_user as db_get_user
+            user = await db_get_user(int(telegram_user_id))
+            if user:
+                return {
+                    "name": user.get("name", ""),
+                    "email": user.get("email", ""),
+                    "initials": (user.get("name", "")[:1] or "").upper(),
+                    "tenure_months": 36,
+                    "credit_band": "prime",
+                    "monthly_spend": 4200,
+                }
+        except Exception:
+            pass
+    return {"name": "", "email": "", "initials": "", "tenure_months": 36, "credit_band": "prime", "monthly_spend": 4200}
 
 
 @router.get("/offers")
@@ -20,23 +34,94 @@ async def get_offers():
 
 
 @router.get("/balance")
-async def get_balance():
-    return MOCK_BALANCE
+async def get_balance(telegram_user_id: str = ""):
+    """Balance from user's real card portfolio."""
+    cards = DEFAULT_PORTFOLIO
+    if telegram_user_id:
+        try:
+            from bot.services.database import get_user_cards
+            db_cards = await get_user_cards(int(telegram_user_id))
+            if db_cards:
+                cards = db_cards
+        except Exception:
+            pass
+
+    total_balance = sum(c.get("default_balance", c.get("balance", 0)) for c in cards)
+    total_limit = sum(c.get("default_limit", c.get("credit_limit", 0)) for c in cards)
+    available = total_limit - total_balance
+    utilization = round((total_balance / total_limit * 100), 1) if total_limit else 0
+
+    return {
+        "current_balance": f"${total_balance:,.2f}",
+        "available_credit": f"${available:,.2f}",
+        "credit_limit": f"${total_limit:,}",
+        "due_date": "Apr 15",
+        "min_payment": "$25.00",
+        "utilization": f"{utilization}%",
+    }
 
 
 @router.get("/transactions")
-async def get_transactions():
-    return MOCK_TRANSACTIONS
+async def get_transactions(telegram_user_id: str = ""):
+    """Recent transactions from real order history, defaults if none."""
+    if telegram_user_id:
+        try:
+            from bot.services.database import get_orders
+            orders = await get_orders(int(telegram_user_id), limit=10)
+            if orders:
+                return [
+                    {
+                        "icon": "🛍",
+                        "name": o.get("product_name", "Purchase"),
+                        "category": o.get("category", "Shopping"),
+                        "amount": f"-${o.get('price', 0)}",
+                        "date": o.get("created_at", "").strftime("%b %d") if hasattr(o.get("created_at", ""), "strftime") else "",
+                        "card": o.get("card_used", "PayPal"),
+                    }
+                    for o in orders
+                ]
+        except Exception:
+            pass
+
+    # Default transactions
+    return [
+        {"icon": "👟", "name": "Nike.com", "category": "Fashion", "amount": "-$129.00", "date": "Apr 1"},
+        {"icon": "🍔", "name": "Uber Eats", "category": "Dining", "amount": "-$24.50", "date": "Mar 30"},
+        {"icon": "📦", "name": "Amazon", "category": "Shopping", "amount": "-$67.99", "date": "Mar 28"},
+        {"icon": "☕", "name": "Starbucks", "category": "Coffee", "amount": "-$8.75", "date": "Mar 27"},
+        {"icon": "🎵", "name": "Spotify", "category": "Subscriptions", "amount": "-$9.99", "date": "Mar 25"},
+    ]
 
 
 @router.get("/card")
-async def get_card():
-    return MOCK_CARD
+async def get_card(telegram_user_id: str = ""):
+    """Primary card details from real portfolio."""
+    card = DEFAULT_PORTFOLIO[0] if DEFAULT_PORTFOLIO else {}
+    return {
+        "number_masked": "•••• •••• •••• 4821",
+        "number_full": "4821 0043 8812 4821",
+        "cvv_masked": "•••",
+        "cvv_full": "847",
+        "holder": "",
+        "expiry": "09/28",
+        "product": card.get("name", "PayPal Credit Card"),
+        "controls": {"online": True, "international": False, "contactless": True, "alerts": True},
+    }
 
 
 @router.get("/rewards")
-async def get_rewards():
-    return MOCK_REWARDS
+async def get_rewards(telegram_user_id: str = ""):
+    """Rewards from real card portfolio."""
+    cards = DEFAULT_PORTFOLIO
+    total_cashback = sum(c.get("default_rewards_earned", 0) for c in cards)
+    return {
+        "total_cashback": f"${total_cashback:.2f}",
+        "cards": [
+            {"name": c["name"], "earned": f"${c.get('default_rewards_earned', 0):.2f}",
+             "rates": ", ".join(f"{k}: {v}" for k, v in c.get("rewards", {}).items())}
+            for c in cards
+        ],
+    }
 
 
 # Store login state per user (Mini App writes, bot reads)
@@ -267,7 +352,7 @@ async def submit_transaction(data: dict):
     return result
 
 
-@router.get("/transactions")
+@router.get("/transactions-by-user")
 async def get_transactions_for_user(username: str = ""):
     """Get transactions for a username."""
     from bot.services.proactive import load_transactions

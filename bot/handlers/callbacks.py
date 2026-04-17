@@ -850,8 +850,8 @@ async def _poll_checkout_complete(query, user_id: int):
                             from bot.models.cards import RECOMMENDABLE_CARDS
                             products_for_tip = [{"name": i["name"], "price": i["price"], "category": i.get("category", "general")} for i in cart_before_clear]
                             # Get card rewards detail for what user paid with
-                            from bot.models.cards import get_card_by_id
-                            paid_card_info = get_card_by_id(card_used) or {}
+                            from bot.models.cards import get_card_by_name
+                            paid_card_info = get_card_by_name(card_used) or {}
                             paid_rewards = ", ".join(f"{k}: {v}" for k, v in paid_card_info.get("rewards", {}).items()) if paid_card_info else card_used
                             paid_with_detail = f"{card_used} ({paid_rewards})" if paid_rewards else card_used
 

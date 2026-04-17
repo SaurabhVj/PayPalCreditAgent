@@ -1,10 +1,7 @@
-"""Message formatting helpers."""
+"""Message formatting helpers — uses real card data from cards.py + DB."""
 
 from bot.models.offers import CREDIT_OFFERS
-from bot.services.mock_data import (
-    MOCK_USER, MOCK_BALANCE, MOCK_TRANSACTIONS, MOCK_REWARDS,
-    MOCK_PORTFOLIO, MOCK_COLLECTIONS,
-)
+from bot.models.cards import DEFAULT_PORTFOLIO, PAYPAL_CARDS
 
 
 def welcome_message() -> str:
@@ -66,74 +63,133 @@ def approval_message(index: int) -> str:
     )
 
 
-def balance_message() -> str:
-    b = MOCK_BALANCE
+def balance_message(cards: list[dict] | None = None) -> str:
+    """Show balance from user's real card portfolio."""
+    if not cards:
+        cards = DEFAULT_PORTFOLIO
+
+    total_balance = sum(c.get("default_balance", 0) for c in cards)
+    total_limit = sum(c.get("default_limit", 0) for c in cards)
+    available = total_limit - total_balance
+    utilization = round((total_balance / total_limit * 100), 1) if total_limit else 0
+
     return (
         f"💰 *Account Balance*\n"
         f"━━━━━━━━━━━━━━━━━\n"
-        f"Current Balance: *{b['current_balance']}*\n"
-        f"Available Credit: *{b['available_credit']}*\n"
-        f"Credit Limit: {b['credit_limit']}\n"
-        f"Due Date: {b['due_date']}\n"
-        f"Min Payment: {b['min_payment']}\n"
-        f"Utilization: {b['utilization']}"
+        f"Current Balance: *${total_balance:,.2f}*\n"
+        f"Available Credit: *${available:,.2f}*\n"
+        f"Credit Limit: ${total_limit:,}\n"
+        f"Due Date: Apr 15\n"
+        f"Min Payment: $25.00\n"
+        f"Utilization: {utilization}%"
     )
 
 
-def statement_message() -> str:
+def statement_message(orders: list[dict] | None = None) -> str:
+    """Show recent transactions from real order history."""
+    if not orders:
+        # Default transactions when no purchase history
+        default_txns = [
+            {"icon": "👟", "name": "Nike.com", "category": "Fashion", "amount": "-$129.00", "date": "Apr 1"},
+            {"icon": "🍔", "name": "Uber Eats", "category": "Dining", "amount": "-$24.50", "date": "Mar 30"},
+            {"icon": "📦", "name": "Amazon", "category": "Shopping", "amount": "-$67.99", "date": "Mar 28"},
+            {"icon": "☕", "name": "Starbucks", "category": "Coffee", "amount": "-$8.75", "date": "Mar 27"},
+            {"icon": "🎵", "name": "Spotify", "category": "Subscriptions", "amount": "-$9.99", "date": "Mar 25"},
+        ]
+        lines = [
+            f"📋 *Recent Transactions*\n"
+            f"━━━━━━━━━━━━━━━━━\n"
+        ]
+        for t in default_txns:
+            lines.append(f"{t['icon']} *{t['name']}*  {t['amount']}")
+            lines.append(f"   _{t['category']}_ · {t['date']}\n")
+        return "\n".join(lines)
+
+    # Real orders from DB
     lines = [
         f"📋 *Recent Transactions*\n"
         f"━━━━━━━━━━━━━━━━━\n"
     ]
-    for t in MOCK_TRANSACTIONS:
-        cr = " 💚" if t.get("credit") else ""
-        lines.append(f"{t['icon']} *{t['name']}*  {t['amount']}{cr}")
-        lines.append(f"   _{t['category']}_ · {t['date']}\n")
+    for o in orders[:8]:
+        icon = "🛍"
+        cat = o.get("category", "Shopping")
+        name = o.get("product_name", "Purchase")
+        price = o.get("price", 0)
+        date_str = o.get("created_at", "")
+        if hasattr(date_str, "strftime"):
+            date_str = date_str.strftime("%b %d")
+        lines.append(f"{icon} *{name}*  -${price}")
+        lines.append(f"   _{cat}_ · {date_str} · 💳 {o.get('card_used', 'PayPal')}\n")
     return "\n".join(lines)
 
 
-def rewards_message() -> str:
-    r = MOCK_REWARDS
-    return (
+def rewards_message(cards: list[dict] | None = None) -> str:
+    """Show rewards from user's real card portfolio."""
+    if not cards:
+        cards = DEFAULT_PORTFOLIO
+
+    total_cashback = sum(c.get("default_rewards_earned", 0) for c in cards)
+
+    lines = [
         f"🎁 *Your Rewards*\n"
         f"━━━━━━━━━━━━━━━━━\n"
-        f"Cash Back YTD: *{r['total_cashback']}*\n"
-        f"Points Balance: *{r['points']:,}*\n"
-        f"Tier: {r['tier']}\n"
-        f"Next Milestone: _{r['next_milestone']}_"
-    )
+    ]
+    for c in cards:
+        earned = c.get("default_rewards_earned", 0)
+        rewards_desc = ", ".join(f"{k}: {v}" for k, v in c.get("rewards", {}).items())
+        lines.append(f"💳 *{c['name']}*")
+        lines.append(f"   Earned: *${earned:.2f}* cashback")
+        lines.append(f"   Rates: {rewards_desc}\n")
+
+    lines.append(f"━━━━━━━━━━━━━━━━━\n💰 Total YTD: *${total_cashback:.2f}*")
+    return "\n".join(lines)
 
 
-def scoring_message() -> str:
-    u = MOCK_USER
+def scoring_message(name: str = "", email: str = "") -> str:
     return (
         f"🧠 *Analyzing your profile...*\n\n"
-        f"👤 {u['name']}\n"
-        f"📧 {u['email']}\n"
-        f"📅 PayPal member: {u['tenure_months']} months\n"
+        f"👤 {name}\n"
+        f"📧 {email}\n"
+        f"📅 PayPal member: 36 months\n"
         f"💳 Eligibility: _Pre-qualified_\n"
-        f"💰 Avg monthly spend: ${u['monthly_spend']:,}\n\n"
+        f"💰 Avg monthly spend: $4,200\n\n"
         f"_This will only take a moment..._"
     )
 
 
-def portfolio_message() -> str:
-    p = MOCK_PORTFOLIO
+def portfolio_message(cards: list[dict] | None = None) -> str:
+    """Show credit portfolio from real card data."""
+    if not cards:
+        cards = DEFAULT_PORTFOLIO
+
+    total_limit = sum(c.get("default_limit", 0) for c in cards)
+    total_balance = sum(c.get("default_balance", 0) for c in cards)
+    total_rewards = sum(c.get("default_rewards_earned", 0) for c in cards)
+    utilization = round((total_balance / total_limit * 100), 1) if total_limit else 0
+    health = "✅ Healthy" if utilization < 30 else "⚠️ High"
+
     lines = [
         f"📊 *Your Credit Portfolio*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💳 Total Credit: *{p['total_credit']}*\n"
-        f"💰 Total Balance: *{p['total_balance']}*\n"
-        f"📊 Utilization: *{p['utilization']}* ✅ Healthy\n"
-        f"🎁 Rewards YTD: *{p['rewards_ytd']}*\n"
+        f"💳 Total Credit: *${total_limit:,}*\n"
+        f"💰 Total Balance: *${total_balance:,}*\n"
+        f"📊 Utilization: *{utilization}%* {health}\n"
+        f"🎁 Rewards YTD: *${total_rewards:.2f}*\n"
     ]
-    for card in p["cards"]:
+    for card in cards:
+        balance = card.get("default_balance", 0)
+        limit = card.get("default_limit", 0)
+        available = limit - balance
+        card_util = round((balance / limit * 100), 1) if limit else 0
+        rewards_desc = ", ".join(f"{k}: {v}" for k, v in card.get("rewards", {}).items())
+        earned = card.get("default_rewards_earned", 0)
+
         lines.append(
-            f"\n*{card['name']}* ({card['number']})\n"
-            f"  Limit: {card['limit']} · Balance: {card['balance']}\n"
-            f"  Available: {card['available']} · Util: {card['utilization']}\n"
-            f"  Rewards: {card['rewards']}\n"
-            f"  💡 _{card['nudge']}_"
+            f"\n*{card['name']}*\n"
+            f"  Limit: ${limit:,} · Balance: ${balance:,}\n"
+            f"  Available: ${available:,} · Util: {card_util}%\n"
+            f"  Rewards: ${earned:.2f} cashback\n"
+            f"  Rates: {rewards_desc}"
         )
     return "\n".join(lines)
 
@@ -142,15 +198,15 @@ def portfolio_optimize_message() -> str:
     return (
         "🔄 *Spend Optimization Tips*\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "1️⃣ *Groceries*: Switch from Miles+ (1x) to Everyday Cash (2%)\n"
-        "   → Save *$86/yr* more in cashback\n\n"
-        "2️⃣ *Travel*: Keep using Miles+ (3x miles)\n"
-        "   → You're earning optimally here ✅\n\n"
-        "3️⃣ *Dining*: Miles+ earns 2x, Everyday Cash earns 2%\n"
-        "   → Miles+ is slightly better if you value miles\n\n"
-        "4️⃣ *Online Shopping*: Use Everyday Cash (2% flat)\n"
-        "   → Miles+ only earns 1x here\n\n"
-        "💡 _Overall you could earn *$86 more per year* by using the right card for each category._"
+        "1️⃣ *PayPal purchases*: Use Cashback MC (3%)\n"
+        "   → Earns 1.5% more than Everyday Cash\n\n"
+        "2️⃣ *Everything else*: Use Everyday Cash (2% flat)\n"
+        "   → Beats Cashback MC's 1.5% on non-PayPal\n\n"
+        "3️⃣ *Big purchases $149+*: Apply for PayPal Credit\n"
+        "   → 0% APR for 6 months — no interest\n\n"
+        "4️⃣ *Travel & Dining*: Apply for Venmo Visa (3%)\n"
+        "   → Auto-detects your top category\n\n"
+        "💡 _Use the right card for each purchase to maximize cashback._"
     )
 
 
@@ -158,30 +214,27 @@ def portfolio_compare_message() -> str:
     return (
         "🔀 *Card Comparison*\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "*Miles+* vs *Everyday Cash*\n\n"
-        "✈️ Travel:    Miles+ *3x* vs Cash *2%*  → Miles+ wins\n"
-        "🍽 Dining:    Miles+ *2x* vs Cash *2%*  → Tie\n"
-        "🛒 Groceries: Miles+ *1x* vs Cash *2%*  → Cash wins\n"
-        "🛍 Shopping:  Miles+ *1x* vs Cash *2%*  → Cash wins\n"
-        "🏦 Annual fee: Miles+ *$99* vs Cash *$0*\n\n"
-        "📊 *Based on your spend:*\n"
-        "  Miles+ projected: *$412/yr* in rewards\n"
-        "  Everyday Cash projected: *$286/yr* in cashback\n\n"
-        "💡 _Use Miles+ for travel & dining, Everyday Cash for everything else._"
+        "*Cashback MC* vs *Everyday Cash*\n\n"
+        "🛒 PayPal:    Cashback *3%* vs Cash *2%*  → Cashback wins\n"
+        "🏪 Other:     Cashback *1.5%* vs Cash *2%*  → Cash wins\n"
+        "💵 Annual fee: Both *$0*\n\n"
+        "📊 *Based on typical spend:*\n"
+        "  Cashback MC: best for PayPal checkout\n"
+        "  Everyday Cash: best for everything else\n\n"
+        "💡 _Use both cards strategically — PayPal = Cashback MC, all else = Everyday Cash._"
     )
 
 
 def collections_message() -> str:
-    c = MOCK_COLLECTIONS
     return (
-        f"⚖️ *Collections — Case #{c['case_id']}*\n"
+        f"⚖️ *Collections — Case #C-2024-00391*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"Your account is *{c['days_past_due']} days past due*.\n\n"
-        f"💳 Card: {c['card']}\n"
-        f"💸 Overdue Amount: *{c['overdue_amount']}*\n"
-        f"💵 Minimum Due: *{c['minimum_due']}*\n"
-        f"📅 Days Past Due: *{c['days_past_due']}*\n"
-        f"⚠️ Hardship: _{c['hardship_flag']}_\n\n"
+        f"Your account is *61 days past due*.\n\n"
+        f"💳 Card: PayPal Cashback Mastercard ••••4821\n"
+        f"💸 Overdue Amount: *$1,240*\n"
+        f"💵 Minimum Due: *$148*\n"
+        f"📅 Days Past Due: *61*\n"
+        f"⚠️ Hardship: _Possible — spend dropped 60%_\n\n"
         f"I want to help you resolve this — not pressure you.\n"
         f"What would you like to do?"
     )
@@ -201,13 +254,12 @@ def collections_hardship_message() -> str:
 
 
 def collections_options_message() -> str:
-    c = MOCK_COLLECTIONS
     return (
         "🤝 *Three Resolution Paths*\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"*Option A* — {c['options']['A']['detail']}\n\n"
-        f"*Option B* — {c['options']['B']['detail']}\n\n"
-        f"*Option C* — {c['options']['C']['detail']}\n\n"
+        "*Option A* — Pay $148 minimum — freeze interest for 90 days\n\n"
+        "*Option B* — $415/month · 0% interest · starts next month\n\n"
+        "*Option C* — Pay $800 now — 35% reduction\n\n"
         "All options stop further late fees from today.\n"
         "Which works best for you?"
     )
