@@ -857,23 +857,25 @@ async def _poll_checkout_complete(query, user_id: int):
 
                             rec_portfolio = [{"card_id": c["id"], "balance": 0, "credit_limit": 10000} for c in RECOMMENDABLE_CARDS]
                             tip = await credit_enrichment(products_for_tip, rec_portfolio, paid_with=paid_with_detail)
-                            if tip and len(tip) > 10:
-                                # Find which card was recommended to add apply button
+                            if tip and len(tip) > 10 and "NONE" not in tip.upper():
+                                # Find the LAST card mentioned in tip — that's the recommended one
                                 apply_buttons = []
+                                matched_card = None
                                 for rc in RECOMMENDABLE_CARDS:
                                     if rc["name"].lower() in tip.lower():
-                                        # Map card to proactive pattern
-                                        pattern_map = {
-                                            "paypal_credit": "electronics",
-                                            "venmo_visa": "travel",
-                                            "debit_mc": "groceries",
-                                            "venmo_teen": "school",
-                                        }
-                                        pattern = pattern_map.get(rc["id"], "travel")
-                                        apply_buttons.append(
-                                            [InlineKeyboardButton(f"✅ Apply for {rc['name']}", callback_data=f"proactive:apply:{pattern}")]
-                                        )
-                                        break
+                                        matched_card = rc  # Keep overwriting — last match wins
+
+                                if matched_card:
+                                    pattern_map = {
+                                        "paypal_credit": "electronics",
+                                        "venmo_visa": "travel",
+                                        "debit_mc": "groceries",
+                                        "venmo_teen": "school",
+                                    }
+                                    pattern = pattern_map.get(matched_card["id"], "travel")
+                                    apply_buttons.append(
+                                        [InlineKeyboardButton(f"✅ Apply for {matched_card['name']}", callback_data=f"proactive:apply:{pattern}")]
+                                    )
 
                                 if not apply_buttons:
                                     apply_buttons.append([InlineKeyboardButton("💳 Explore Credit Cards", callback_data="topic:credit_menu")])

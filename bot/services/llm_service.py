@@ -193,20 +193,17 @@ async def credit_enrichment(products: list[dict], user_portfolio: list[dict], pa
     if paid_with:
         # Post-purchase: only recommend if there's a REAL saving difference
         system_msg = (
-            "You are a PayPal credit advisor. The user already paid with a specific card. "
-            "Check if any OTHER card would have given SIGNIFICANTLY better rewards. "
-            "Only recommend if the difference is meaningful — different reward type (e.g. 0% APR vs cashback) or higher percentage. "
-            "If the other cards offer the SAME or similar cashback percentage, return EMPTY string — no recommendation needed. "
-            "If recommending, explain the specific difference in ONE sentence with dollar amounts."
+            "Reply with ONE sentence ONLY. Max 30 words. "
+            "The user paid with a card. If another card gives a DIFFERENT and BETTER benefit, recommend it with the exact dollar saving. "
+            "If benefits are similar (e.g. both ~3% cashback), reply with just the word NONE."
         )
-        user_msg = f"Products purchased:\n{products_text}\n\nPaid with: {paid_with}\n\nOther cards available:\n{cards_text}\n\nRecommendation (empty if no significant difference):"
+        user_msg = f"Bought: {products_text}\nPaid with: {paid_with}\nOther cards: {cards_text}\nRecommendation (ONE sentence or NONE):"
     else:
-        # Pre-checkout: suggest best card
         system_msg = (
-            "You are a PayPal credit advisor. Suggest the BEST card to use for this purchase in ONE sentence. "
-            "Focus on concrete savings: cashback %, 0% APR, or specific dollar amounts."
+            "Reply with ONE sentence ONLY. Max 20 words. "
+            "Recommend the best card for this purchase with the specific benefit."
         )
-        user_msg = f"Products:\n{products_text}\n\nAvailable cards:\n{cards_text}\n\nBest card:"
+        user_msg = f"Buying: {products_text}\nCards: {cards_text}\nBest card (ONE sentence):"
 
     messages = [
         {"role": "system", "content": system_msg},
