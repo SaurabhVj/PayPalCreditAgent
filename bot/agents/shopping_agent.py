@@ -67,10 +67,16 @@ class ShoppingAgent:
 
         response = OrchestratorResult(intent="shopping")
 
-        # Check for cart-related keywords
+        # Quick keyword checks for direct actions (no LLM needed)
         msg_lower = message.lower().strip()
-        if any(w in msg_lower for w in ["cart", "my cart", "show cart", "view cart"]):
+        if any(w in msg_lower for w in ["my cart", "show cart", "view cart"]):
             response.tool_action = {"name": "show_cart", "args": {}}
+            return response
+        if any(w in msg_lower for w in ["my wishlist", "manage wishlist", "view wishlist", "show wishlist"]):
+            response.tool_action = {"name": "manage_wishlist", "args": {}}
+            return response
+        if any(w in msg_lower for w in ["manage subscription", "my subscription", "view subscription", "show subscription"]):
+            response.tool_action = {"name": "manage_subscriptions", "args": {}}
             return response
 
         if search_query:
@@ -78,7 +84,6 @@ class ShoppingAgent:
             logger.info(f"Shopping search (from classifier): '{search_query}'")
             products = await self._search_and_rerank(search_query, user_id, original_message=message)
 
-            # If no results, expand with synonyms and retry
             if not products:
                 expanded = await self._expand_query(search_query)
                 if expanded and expanded != search_query:
@@ -90,7 +95,7 @@ class ShoppingAgent:
             else:
                 response.message = f"🔍 No products found for '{search_query}'. Try a different search term."
         else:
-            # No specific query — ask clarifying question via LLM
+            # No specific query — let LLM decide (ask question, or call a tool)
             messages = []
             if history:
                 for m in history[-10:]:
@@ -104,17 +109,19 @@ class ShoppingAgent:
             llm_message = result.get("message")
             tool_call = result.get("tool_call")
 
-            # LLM might still decide to search (e.g. from conversation context)
-            if tool_call and tool_call["name"] == "search_products":
-                query = tool_call["args"].get("query", message)
-                products = await self._search_and_rerank(query, user_id, original_message=message)
-                if products:
-                    response.products = products
-                    session["last_search"] = query
+            if tool_call:
+                tool_name = tool_call["name"]
+                if tool_name == "search_products":
+                    query = tool_call["args"].get("query", message)
+                    products = await self._search_and_rerank(query, user_id, original_message=message)
+                    if products:
+                        response.products = products
+                        session["last_search"] = query
+                    else:
+                        response.message = f"🔍 No products found for '{query}'. Try something else."
                 else:
-                    response.message = f"🔍 No products found for '{query}'. Try something else."
-            elif tool_call and tool_call["name"] == "show_cart":
-                response.tool_action = {"name": "show_cart", "args": {}}
+                    # show_cart, manage_wishlist, manage_subscriptions
+                    response.tool_action = {"name": tool_name, "args": tool_call.get("args", {})}
             else:
                 response.message = llm_message or "🛍 What would you like to shop for? Tell me a product name or category."
 
