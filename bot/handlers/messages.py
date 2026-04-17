@@ -186,6 +186,36 @@ async def _execute_tool(update: Update, user_id: int, tool: dict, session: dict)
     elif name == "show_rewards":
         await update.message.reply_text(rewards_message(), parse_mode="Markdown")
 
+    elif name == "manage_subscriptions":
+        try:
+            from bot.services.database import get_subscriptions
+            subs = await get_subscriptions(user_id)
+            if not subs:
+                await update.message.reply_text("📦 You don't have any active subscriptions yet.")
+                return
+            lines = ["📋 *Your Subscriptions*\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"]
+            buttons = []
+            for s in subs:
+                next_d = s.get("next_delivery", "")
+                if hasattr(next_d, "strftime"):
+                    next_d = next_d.strftime("%b %d, %Y")
+                lines.append(
+                    f"📦 *{s['product_name']}*\n"
+                    f"   🔄 {s['frequency'].title()} · 📅 Next: {next_d}\n"
+                )
+                sid = s["id"]
+                buttons.append([
+                    InlineKeyboardButton(f"✏️ Change {s['product_name'][:15]}", callback_data=f"subscribe:modify:{sid}"),
+                    InlineKeyboardButton(f"❌ Cancel", callback_data=f"subscribe:cancel:{sid}"),
+                ])
+            await update.message.reply_text(
+                "\n".join(lines), parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+        except Exception as e:
+            logger.error(f"Manage subscriptions failed: {e}")
+            await update.message.reply_text("Couldn't load subscriptions. Try again later.")
+
     elif name == "analyze_spend":
         try:
             from bot.agents.intelligence import analyze_spend_patterns

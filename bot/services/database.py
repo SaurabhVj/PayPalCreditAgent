@@ -324,5 +324,19 @@ async def get_subscriptions(telegram_id: int) -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT * FROM subscriptions WHERE telegram_id = $1 AND active = TRUE", telegram_id)
+            "SELECT * FROM subscriptions WHERE telegram_id = $1 AND active = TRUE ORDER BY created_at DESC", telegram_id)
         return [dict(r) for r in rows]
+
+
+async def update_subscription_frequency(sub_id: int, frequency: str, next_delivery):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE subscriptions SET frequency = $1, next_delivery = $2 WHERE id = $3",
+            frequency, next_delivery, sub_id)
+
+
+async def cancel_subscription(sub_id: int):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE subscriptions SET active = FALSE WHERE id = $1", sub_id)

@@ -316,21 +316,112 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             p = get_catalog().get_product(product_id)
             product_name = p["name"] if p else "Product"
             from datetime import date, timedelta
-            intervals = {"weekly": 7, "biweekly": 14, "monthly": 30}
+            intervals = {"weekly": 7, "monthly": 30, "yearly": 365}
             next_delivery = date.today() + timedelta(days=intervals.get(frequency, 30))
             await add_subscription(user_id, product_id, product_name, frequency, next_delivery)
+            _track(user_id, f"Subscribed to {product_name} ({frequency})")
             await query.message.reply_text(
                 f"✅ *Subscription Active!*\n\n"
                 f"📦 {product_name}\n"
                 f"🔄 Frequency: {frequency.title()}\n"
                 f"📅 Next delivery: {next_delivery.strftime('%b %d, %Y')}\n\n"
-                f"You can manage subscriptions anytime.",
+                f"Type \"manage subscriptions\" or tap below to manage.",
                 parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📋 Manage Subscriptions", callback_data="subscribe:manage")],
+                    [InlineKeyboardButton("🛍 Continue Shopping", callback_data="shop:back")],
+                ]),
             )
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Subscription setup failed: {e}")
             await query.message.reply_text("Sorry, couldn't set up subscription. Try again later.")
+
+    elif data == "subscribe:manage":
+        # Show all active subscriptions
+        try:
+            from bot.services.database import get_subscriptions
+            subs = await get_subscriptions(user_id)
+            if not subs:
+                await query.message.reply_text("📦 You don't have any active subscriptions yet.")
+                return
+            lines = ["📋 *Your Subscriptions*\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"]
+            buttons = []
+            for s in subs:
+                next_d = s.get("next_delivery", "")
+                if hasattr(next_d, "strftime"):
+                    next_d = next_d.strftime("%b %d, %Y")
+                lines.append(
+                    f"📦 *{s['product_name']}*\n"
+                    f"   🔄 {s['frequency'].title()} · 📅 Next: {next_d}\n"
+                )
+                sid = s["id"]
+                buttons.append([
+                    InlineKeyboardButton(f"✏️ Change {s['product_name'][:15]}", callback_data=f"subscribe:modify:{sid}"),
+                    InlineKeyboardButton(f"❌ Cancel", callback_data=f"subscribe:cancel:{sid}"),
+                ])
+            await query.message.reply_text(
+                "\n".join(lines),
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Manage subscriptions failed: {e}")
+            await query.message.reply_text("Couldn't load subscriptions. Try again later.")
+
+    elif data.startswith("subscribe:modify:"):
+        # Show frequency options for a subscription
+        sub_id = data.split(":")[2]
+        await query.message.reply_text(
+            "🔄 *Change Frequency*\n\nChoose a new delivery schedule:",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📅 Weekly", callback_data=f"subscribe:freq:{sub_id}:weekly")],
+                [InlineKeyboardButton("📅 Monthly", callback_data=f"subscribe:freq:{sub_id}:monthly")],
+                [InlineKeyboardButton("📅 Yearly", callback_data=f"subscribe:freq:{sub_id}:yearly")],
+                [InlineKeyboardButton("← Back", callback_data="subscribe:manage")],
+            ]),
+        )
+
+    elif data.startswith("subscribe:freq:"):
+        # subscribe:freq:{sub_id}:{frequency}
+        parts = data.split(":")
+        sub_id = int(parts[2])
+        frequency = parts[3]
+        try:
+            from bot.services.database import update_subscription_frequency
+            from datetime import date, timedelta
+            intervals = {"weekly": 7, "monthly": 30, "yearly": 365}
+            next_delivery = date.today() + timedelta(days=intervals.get(frequency, 30))
+            await update_subscription_frequency(sub_id, frequency, next_delivery)
+            await query.message.reply_text(
+                f"✅ Subscription updated to *{frequency.title()}*\n📅 Next delivery: {next_delivery.strftime('%b %d, %Y')}",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📋 Manage Subscriptions", callback_data="subscribe:manage")],
+                ]),
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Update subscription failed: {e}")
+            await query.message.reply_text("Couldn't update subscription. Try again later.")
+
+    elif data.startswith("subscribe:cancel:"):
+        sub_id = int(data.split(":")[2])
+        try:
+            from bot.services.database import cancel_subscription
+            await cancel_subscription(sub_id)
+            await query.message.reply_text(
+                "✅ Subscription cancelled.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📋 Manage Subscriptions", callback_data="subscribe:manage")],
+                ]),
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Cancel subscription failed: {e}")
+            await query.message.reply_text("Couldn't cancel subscription. Try again later.")
 
     elif data.startswith("proactive:submit"):
         await _handle_proactive_submit(query, user_id)
@@ -875,29 +966,60 @@ async def _show_post_purchase_intelligence(query, user_id: int, card_used: str):
     except Exception as e:
         _log.error(f"Post-purchase card tip failed: {e}")
 
-    # 2. Subscription nudge — if user bought this product before
+    # 2. Subscription nudge — only for products bought RIGHT NOW that were bought before
     try:
-        from bot.agents.intelligence import detect_subscription_candidates
-        candidates = await detect_subscription_candidates(user_id)
+        from bot.services.database import get_orders, get_subscriptions
+        recent_orders = await get_orders(user_id, limit=10)
 
-        if candidates:
-            top = candidates[0]
-            if top["times_bought"] >= 2:
+        # Get products from this checkout (last 2 minutes)
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        just_bought = []
+        for o in recent_orders:
+            created = o.get("created_at")
+            if created:
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                if (now - created).total_seconds() < 120:
+                    just_bought.append(o)
+
+        # Check which of these products were bought before (excluding this purchase)
+        already_subscribed = set()
+        try:
+            subs = await get_subscriptions(user_id)
+            already_subscribed = {s.get("product_id", "") for s in subs}
+        except Exception:
+            pass
+
+        for item in just_bought:
+            pid = item.get("product_id", "")
+            if not pid or pid in already_subscribed:
+                continue
+
+            # Count how many times this product was bought BEFORE this purchase
+            from bot.services.database import get_product_order_count
+            count = await get_product_order_count(user_id, pid)
+            if count >= 2:  # Bought at least twice (including this time)
+                product_name = item.get("product_name", "Product")
+                price = float(item.get("price", 0))
+
                 await query.message.reply_text(
                     f"🔄 *Subscribe & Save*\n\n"
-                    f"You've bought *{top['product_name']}* {top['times_bought']} times.\n"
-                    f"Set up *{top['suggested_frequency']}* auto-delivery and never run out!\n\n"
-                    f"💰 ${top['price']} per delivery",
+                    f"You've bought *{product_name}* {count} times.\n"
+                    f"Set up auto-delivery and never run out!\n\n"
+                    f"💰 ${price:.2f} per delivery\n\n"
+                    f"Choose your frequency:",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton(
-                            f"✅ Subscribe {top['suggested_frequency'].title()}",
-                            callback_data=f"subscribe:setup:{top['product_id']}:{top['suggested_frequency']}"
-                        )],
+                        [InlineKeyboardButton("📅 Weekly", callback_data=f"subscribe:setup:{pid}:weekly")],
+                        [InlineKeyboardButton("📅 Monthly", callback_data=f"subscribe:setup:{pid}:monthly")],
+                        [InlineKeyboardButton("📅 Yearly", callback_data=f"subscribe:setup:{pid}:yearly")],
                         [InlineKeyboardButton("❌ No thanks", callback_data="shop:back")],
                     ]),
                 )
-                _log.info(f"Subscription nudge: {top['product_name']} x{top['times_bought']}")
+                _track(user_id, f"Suggested subscription for {product_name} (bought {count}x)")
+                _log.info(f"Subscription nudge: {product_name} x{count}")
+                break  # Only suggest one product per checkout
     except Exception as e:
         _log.error(f"Subscription detection failed: {e}")
 
