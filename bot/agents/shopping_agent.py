@@ -93,7 +93,10 @@ class ShoppingAgent:
             response.tool_action = {"name": "manage_wishlist", "args": {}}
             return response
         if "subscription" in msg_lower or "subscribe" in msg_lower:
-            response.tool_action = {"name": "manage_subscriptions", "args": {}}
+            if any(w in msg_lower for w in ["suggest", "recommend", "what should", "based on", "history", "analyze"]):
+                response.tool_action = {"name": "analyze_subscriptions", "args": {}}
+            else:
+                response.tool_action = {"name": "manage_subscriptions", "args": {}}
             return response
         if "cart" in msg_lower and "search" not in msg_lower:
             response.tool_action = {"name": "show_cart", "args": {}}
