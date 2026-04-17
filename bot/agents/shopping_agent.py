@@ -11,12 +11,13 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are a PayPal Shopping Assistant. Help users find and buy products.
 
-Rules:
-1. When user asks for ANY product — call search_products immediately. Examples: "airpods", "Nike shoes", "headphones", "Nike tshirt", "baby diapers", "show all apple products"
-2. ONLY ask a clarifying question when user says JUST a single brand word with nothing else. Example: just "Nike" alone or just "Apple" alone.
-3. "show more", "show all", "what else" → call search_products with broader query from conversation history
-4. NEVER ask a question AND call search_products at the same time. Do one or the other.
-5. Be concise."""
+CRITICAL RULES:
+1. ALWAYS call search_products for ANY product request. Examples: "earphones", "airpods", "Nike shoes", "headphones", "laptop", "baby diapers", "coffee machine"
+2. You MUST use search_products — NEVER list, suggest, or describe products yourself. You do NOT know what products are available. Only search_products knows the catalog.
+3. ONLY ask a clarifying question when user says JUST a single brand word alone (e.g. just "Nike" or just "Apple" with nothing else).
+4. "show more", "show all", "what else" → call search_products with broader query from conversation history.
+5. NEVER respond with product names or prices in your text. The search tool handles all product display.
+6. Be concise. Do not add any product information in your text response."""
 
 TOOLS = [
     {
@@ -91,8 +92,22 @@ class ShoppingAgent:
                 response.message = llm_message
 
         else:
-            # No tool call — just conversational (e.g. "What type of Nike product?")
-            response.message = llm_message or "What are you looking for? I can help you find products."
+            # No tool call — LLM decided to respond conversationally.
+            # Safety net: if the message looks like a product query, force a search
+            # to prevent the LLM from hallucinating products in text.
+            forced_products = await self._search_and_rerank(message, user_id, original_message=message)
+            if not forced_products:
+                expanded = await self._expand_query(message)
+                if expanded and expanded != message:
+                    forced_products = await self._search_and_rerank(expanded, user_id, original_message=message)
+
+            if forced_products:
+                logger.info(f"Forced search found {len(forced_products)} products (LLM skipped tool)")
+                response.products = forced_products
+                session["last_search"] = message
+            else:
+                # Genuinely conversational (e.g. "What type of Nike product?")
+                response.message = llm_message or "What are you looking for? I can help you find products."
 
         return response
 
